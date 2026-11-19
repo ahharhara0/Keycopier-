@@ -1,0 +1,6 @@
+{
+  "name": "KeyCopier",
+  "description": "100% offline-first precision key decoder, bitting extractor, and 3D STL/SVG/PDF template studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,186 @@
+<resources>
+    <string name="app_name">KeyCopier</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_library">المكتبة</string>
+    <string name="nav_studio">الاستوديو</string>
+    <string name="nav_reports">القوالب</string>
+    <string name="nav_settings">الإعدادات</string>
+
+    <!-- Security & PIN -->
+    <string name="pin_setup_title">إنشاء رمز الخزنة (PIN)</string>
+    <string name="pin_setup_subtitle">اختر رمز مرور من 4 إلى 8 أرقام لتشفير وحماية خزنة مفاتيحك المحلية.</string>
+    <string name="pin_confirm_title">تأكيد رمز الخزنة</string>
+    <string name="pin_confirm_subtitle">أعد إدخال الرمز للتحقق وتأمين الخزنة.</string>
+    <string name="pin_unlock_title">خزنة KeyCopier مقفلة</string>
+    <string name="pin_unlock_subtitle">أدخل رمز الـ PIN أو استخدم البصمة للوصول إلى مفاتيحك.</string>
+    <string name="pin_mismatch_error">الرمزان غير متطابقين. حاول مرة أخرى.</string>
+    <string name="pin_invalid_error">رمز غير صحيح. المحاولات المتبقية: %1$d</string>
+    <string name="pin_length_error">يجب أن يكون الرمز من 4 إلى 8 أرقام.</string>
+    <string name="pin_biometric_prompt_title">فتح خزنة KeyCopier</string>
+    <string name="pin_biometric_prompt_subtitle">المصادقة عبر بصمة الإصبع أو الوجه</string>
+    <string name="pin_biometric_negative">استخدام الرمز</string>
+    <string name="pin_use_biometric">فتح بالبصمة</string>
+    <string name="pin_continue">متابعة</string>
+    <string name="pin_unlock_action">فتح القفل</string>
+    <string name="pin_backspace">حذف</string>
+    <string name="pin_clear">مسح</string>
+    <string name="pin_offline_badge">معزول 100% دون إنترنت • AES-256-GCM + SQLCipher</string>
+
+    <!-- Home Dashboard -->
+    <string name="home_title">KeyCopier برو</string>
+    <string name="home_subtitle">محلل مفاتيح هندسي واستوديو CAD محلي</string>
+    <string name="home_hero_title">فك التشفير البصري والقياس المباشر</string>
+    <string name="home_hero_desc">استخرج أكواد الأسنان (Bitting)، وأنشئ مخططات CNC بمقياس 1:1 ومجسمات STL للطباعة ثلاثية الأبعاد محلياً بالكامل.</string>
+    <string name="home_stat_total_keys">إجمالي المفاتيح</string>
+    <string name="home_stat_favorites">المفضلة</string>
+    <string name="home_stat_templates">القوالب الجاهزة</string>
+    <string name="home_stat_security">حالة التشفير</string>
+    <string name="home_quick_actions">وصول سريع</string>
+    <string name="home_action_photo_decode">تحليل صورة</string>
+    <string name="home_action_screen_ruler">مسطرة الشاشة</string>
+    <string name="home_action_library">مكتبة المفاتيح</string>
+    <string name="home_action_templates">مركز التصدير</string>
+    <string name="home_recent_keys">أحدث المفاتيح</string>
+    <string name="home_empty_recent">لا توجد مفاتيح محفوظة بعد. ابدأ من الاستوديو عبر معايرة الصورة أو مسطرة الشاشة.</string>
+    <string name="home_start_decoding">فتح استوديو المفاتيح</string>
+
+    <!-- Library -->
+    <string name="library_title">مكتبة المفاتيح</string>
+    <string name="library_search_hint">ابحث بالاسم أو كود الأسنان أو الوسم…</string>
+    <string name="library_filter_all">الكل</string>
+    <string name="library_empty_title">الخزنة فارغة</string>
+    <string name="library_empty_desc">قم بفك تشفير مفتاح في الاستوديو أو استورد نسخة احتياطية .kcb / .json من القوالب.</string>
+    <string name="library_pins_count">%1$d أسنان</string>
+    <string name="library_bitting_label">كود الأسنان</string>
+    <string name="library_favorite_toggle">تبديل المفضلة</string>
+    <string name="library_detail_title">مخطط المفتاح</string>
+    <string name="library_edit_in_studio">تعديل في الاستوديو</string>
+    <string name="library_export_templates">تصدير ومشاركة</string>
+    <string name="library_delete_key">حذف المفتاح</string>
+    <string name="library_delete_confirm_title">حذف سجل المفتاح؟</string>
+    <string name="library_delete_confirm_msg">سيتم حذف \"%1$s\" وجميع مرفقاته المشفرة نهائياً من الخزنة.</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_save">حفظ</string>
+    <string name="action_share">مشاركة</string>
+    <string name="action_done">تم</string>
+
+    <!-- Categories -->
+    <string name="cat_home">المنزل</string>
+    <string name="cat_office">المكتب</string>
+    <string name="cat_vehicle">المركبة</string>
+    <string name="cat_storage">المخزن</string>
+    <string name="cat_personal">شخصي</string>
+    <string name="cat_other">أخرى</string>
+
+    <!-- Key Studio -->
+    <string name="studio_title">استوديو تحليل المفاتيح</string>
+    <string name="studio_mode_photo">معايرة صورة</string>
+    <string name="studio_mode_ruler">مسطرة الشاشة</string>
+    <string name="studio_mode_bitting">محرر النقاط</string>
+    <string name="studio_mode_3d">معاينة 3D</string>
+    <string name="studio_capture_photo">التقاط بالكاميرا</string>
+    <string name="studio_pick_photo">اختيار صورة</string>
+    <string name="studio_rectify_card">تصحيح المنظور (بطاقة 85.6×53.98 مم)</string>
+    <string name="studio_reset_corners">إعادة تعيين الزوايا</string>
+    <string name="studio_card_calibrated">معاير عمودياً بدقة 20 بكسل/مم</string>
+    <string name="studio_drag_corners_hint">اسحب نقاط الزوايا الأربع إلى حواف البطاقة المرجعية ISO ID-1 ثم اضغط تصحيح المنظور.</string>
+    <string name="studio_ruler_hint">ضع المفتاح مباشرة على شاشة الهاتف. طابق الكتف والظهر ثم اسحب نقاط عمق الأسنان.</string>
+    <string name="studio_standard_label">معيار القفل</string>
+    <string name="studio_pin_count">عدد الأسنان</string>
+    <string name="studio_blade_length">طول النصل (مم)</string>
+    <string name="studio_blade_width">عرض النصل (مم)</string>
+    <string name="studio_blade_thickness">السماكة (مم)</string>
+    <string name="studio_bitting_code">كود التسنين</string>
+    <string name="studio_save_key">حفظ في الخزنة</string>
+    <string name="studio_key_name">اسم المفتاح</string>
+    <string name="studio_key_notes">ملاحظات ووسوم</string>
+    <string name="studio_category">التصنيف</string>
+    <string name="studio_saved_toast">تم حفظ المفتاح في الخزنة المشفرة</string>
+    <string name="studio_camera_permission_title">صلاحية الكاميرا مطلوبة</string>
+    <string name="studio_camera_permission_desc">امنح صلاحية الكاميرا لتصوير المفتاح بجانب البطاقة المرجعية، أو استخدم منتقي الصور الآمن.</string>
+    <string name="studio_grant_camera">تفعيل الكاميرا</string>
+    <string name="studio_take_shot">التقاط</string>
+    <string name="studio_close_camera">إغلاق الكاميرا</string>
+    <string name="studio_3d_turntable">تدوير تلقائي</string>
+    <string name="studio_3d_wireframe">إطار شبكي</string>
+    <string name="studio_3d_drag_hint">اسحب في أي اتجاه للتدوير 360° • فحص مجاري النصل والأسنان</string>
+    <string name="studio_longitudinal_btn">صفحة قياس طولية</string>
+    <string name="studio_longitudinal_title">صفحة وضع المفتاح الطولية (1:1)</string>
+    <string name="studio_longitudinal_hint">ضع المفتاح طولياً على الشاشة. اسحب النقاط أو استخدم الأسهم أو الأرقام من 0 (مستوي) إلى 9.</string>
+    <string name="studio_key_sides">نوع النصل</string>
+    <string name="studio_single_sided">جهة واحدة</string>
+    <string name="studio_double_sided">أبو جهتين</string>
+    <string name="studio_quick_levels">مستوى السن (0 مستوي ← 9 عميق)</string>
+    <string name="studio_flat_zero">0 مستوي</string>
+    <string name="studio_arrow_shallower">رفع (أقل عمقاً)</string>
+    <string name="studio_arrow_deeper">خفض (قطع أعمق)</string>
+    <string name="studio_arrow_prev_pin">السن السابق</string>
+    <string name="studio_arrow_next_pin">السن التالي</string>
+
+    <!-- Templates & Reports -->
+    <string name="reports_title">مركز القوالب والتصنيع</string>
+    <string name="reports_select_key">اختر المفتاح</string>
+    <string name="reports_no_keys">احفظ مفتاحاً في الاستوديو أولاً لتوليد ملفات STL و SVG و DXF و PDF و PNG.</string>
+    <string name="reports_format_stl">مجسم طباعة ثلاثية الأبعاد (.STL)</string>
+    <string name="reports_format_stl_desc">ملف STL ثنائي مغلق مع بثق السماكة وثقب الحلقة ومجاري النصل.</string>
+    <string name="reports_format_svg">مخطط قص متجه (.SVG)</string>
+    <string name="reports_format_svg_desc">مسار مغلق بمقياس حقيقي 1:1 بالمليمتر لآلات الليزر و CNC.</string>
+    <string name="reports_format_dxf">ملف أوتوكاد CNC (.DXF)</string>
+    <string name="reports_format_dxf_desc">هندسة LWPOLYLINE قياسية بالمليمتر جاهزة للتشغيل.</string>
+    <string name="reports_format_pdf">قالب ورقي بمقياس 1:1 (.PDF)</string>
+    <string name="reports_format_pdf_desc">مخطط طباعة حقيقي 1:1 مع مربع معايرة 50×50 مم.</string>
+    <string name="reports_format_png">صورة مخطط هندسي (.PNG)</string>
+    <string name="reports_format_png_desc">مخطط عالي الدقة مع جدول الأعماق والمسافات بالمليمتر.</string>
+    <string name="reports_format_text">ملخص كود التسنين النصي</string>
+    <string name="reports_format_text_desc">مشاركة كود الأسنان والمعيار والأعماق كنص منظم.</string>
+    <string name="reports_save_saf">حفظ في الجهاز</string>
+    <string name="reports_share_now">مشاركة</string>
+    <string name="reports_backup_section">النسخ الاحتياطي والاستعادة</string>
+    <string name="reports_export_kcb">تصدير خزنة مشفرة (.KCB)</string>
+    <string name="reports_export_json">تصدير نسخة JSON (.JSON)</string>
+    <string name="reports_import_backup">استيراد نسخة احتياطية (.KCB / .JSON)</string>
+    <string name="reports_export_success">تم التصدير بنجاح: %1$s</string>
+    <string name="reports_import_success">تم استيراد %1$d مفاتيح إلى الخزنة</string>
+
+    <!-- Settings & Security -->
+    <string name="settings_title">الإعدادات والأمان</string>
+    <string name="settings_security_section">أمان الخزنة</string>
+    <string name="settings_change_pin">تغيير رمز الـ PIN</string>
+    <string name="settings_biometric_title">الفتح بالبصمة</string>
+    <string name="settings_biometric_desc">استخدام بصمة الإصبع أو الوجه مع رمز PIN</string>
+    <string name="settings_autolock_title">مهلة القفل التلقائي</string>
+    <string name="settings_calibration_section">الدقة والمعايرة</string>
+    <string name="settings_dpi_title">معايرة دقة الشاشة (DPI)</string>
+    <string name="settings_dpi_desc">اضبط الشريط حتى يطابق طول بطاقة قياسية 85.60 مم</string>
+    <string name="settings_unit_title">وحدة القياس</string>
+    <string name="settings_appearance_section">المظهر واللغة</string>
+    <string name="settings_language_title">اللغة</string>
+    <string name="settings_theme_title">السمة</string>
+    <string name="settings_privacy_section">حالة العزل والخصوصية</string>
+    <string name="settings_privacy_desc">دون صلاحية إنترنت • قاعدة بيانات SQLCipher • تشفير ملفات AES-256-GCM</string>
+    <string name="settings_storage_stats">السجلات المشفرة: %1$d مفاتيح • %2$d ملفات (%3$s)</string>
+    <string name="autolock_immediate">فوري</string>
+    <string name="autolock_30s">30 ثانية</string>
+    <string name="autolock_1m">دقيقة واحدة</string>
+    <string name="autolock_5m">5 دقائق</string>
+    <string name="autolock_never">أبداً</string>
+    <string name="theme_system">النظام</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
+    <string name="lang_english">English</string>
+    <string name="lang_arabic">العربية</string>
+    <string name="unit_mm">مليمتر (mm)</string>
+    <string name="unit_mil">ألف من البوصة (mil)</string>
+
+    <!-- About & Owner Credits -->
+    <string name="settings_about_section">المصدر المفتوح وحقوق المالك</string>
+    <string name="settings_open_source_badge">تطبيق مفتوح المصدر (Open Source)</string>
+    <string name="settings_open_source_desc">تطبيق هندسي مفتوح المصدر ويعمل محلياً 100% دون اتصال بالإنترنت.</string>
+    <string name="settings_dev_label_ar">برمجة وتطوير: أحمد أمين بن هرهرة</string>
+    <string name="settings_dev_label_en">AHMED AMEEN BAN HARHARA</string>
+    <string name="settings_github_handle">GitHub: @ahharhara</string>
+    <string name="settings_github_copied">تم نسخ @ahharhara</string>
+</resources>

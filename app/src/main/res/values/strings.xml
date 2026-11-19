@@ -1,0 +1,186 @@
+<resources>
+    <string name="app_name">KeyCopier</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_studio">Key Studio</string>
+    <string name="nav_reports">Templates</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Security & PIN -->
+    <string name="pin_setup_title">Create Vault PIN</string>
+    <string name="pin_setup_subtitle">Choose a 4 to 8 digit PIN to encrypt and protect your offline key vault.</string>
+    <string name="pin_confirm_title">Confirm Vault PIN</string>
+    <string name="pin_confirm_subtitle">Re-enter your PIN to verify and lock the vault.</string>
+    <string name="pin_unlock_title">KeyCopier Vault Locked</string>
+    <string name="pin_unlock_subtitle">Enter your PIN or use biometrics to access your keys.</string>
+    <string name="pin_mismatch_error">PINs do not match. Please try again.</string>
+    <string name="pin_invalid_error">Incorrect PIN. Attempts remaining: %1$d</string>
+    <string name="pin_length_error">PIN must be 4 to 8 digits.</string>
+    <string name="pin_biometric_prompt_title">Unlock KeyCopier Vault</string>
+    <string name="pin_biometric_prompt_subtitle">Authenticate with your fingerprint or face</string>
+    <string name="pin_biometric_negative">Use PIN</string>
+    <string name="pin_use_biometric">Use Biometrics</string>
+    <string name="pin_continue">Continue</string>
+    <string name="pin_unlock_action">Unlock</string>
+    <string name="pin_backspace">Backspace</string>
+    <string name="pin_clear">Clear</string>
+    <string name="pin_offline_badge">100% Offline • AES-256-GCM + SQLCipher</string>
+
+    <!-- Home Dashboard -->
+    <string name="home_title">KeyCopier Pro</string>
+    <string name="home_subtitle">Precision Offline Key Decoder &amp; CAD Vault</string>
+    <string name="home_hero_title">Optical &amp; Screen Key Decoding</string>
+    <string name="home_hero_desc">Extract pin bitting codes, generate 1:1 CNC blueprints, and build 3D-printable STL keys completely offline.</string>
+    <string name="home_stat_total_keys">Total Keys</string>
+    <string name="home_stat_favorites">Favorites</string>
+    <string name="home_stat_templates">Exports Ready</string>
+    <string name="home_stat_security">Vault Encrypted</string>
+    <string name="home_quick_actions">Quick Actions</string>
+    <string name="home_action_photo_decode">Photo Decode</string>
+    <string name="home_action_screen_ruler">Screen Ruler</string>
+    <string name="home_action_library">Key Library</string>
+    <string name="home_action_templates">Export Center</string>
+    <string name="home_recent_keys">Recent Keys</string>
+    <string name="home_empty_recent">No keys decoded yet. Start in Key Studio using Photo Calibration or the Screen Ruler.</string>
+    <string name="home_start_decoding">Launch Key Studio</string>
+
+    <!-- Library -->
+    <string name="library_title">Key Library</string>
+    <string name="library_search_hint">Search keys, bitting codes, tags…</string>
+    <string name="library_filter_all">All</string>
+    <string name="library_empty_title">Vault Is Empty</string>
+    <string name="library_empty_desc">Decode a key in Key Studio or import a .kcb / .json backup from Templates.</string>
+    <string name="library_pins_count">%1$d Pins</string>
+    <string name="library_bitting_label">Bitting</string>
+    <string name="library_favorite_toggle">Toggle favorite</string>
+    <string name="library_detail_title">Key Blueprint</string>
+    <string name="library_edit_in_studio">Edit in Studio</string>
+    <string name="library_export_templates">Export &amp; Share</string>
+    <string name="library_delete_key">Delete Key</string>
+    <string name="library_delete_confirm_title">Delete Key Record?</string>
+    <string name="library_delete_confirm_msg">This permanently removes \"%1$s\" and its encrypted attachments from the vault.</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_save">Save</string>
+    <string name="action_share">Share</string>
+    <string name="action_done">Done</string>
+
+    <!-- Categories -->
+    <string name="cat_home">Home</string>
+    <string name="cat_office">Office</string>
+    <string name="cat_vehicle">Vehicle</string>
+    <string name="cat_storage">Storage</string>
+    <string name="cat_personal">Personal</string>
+    <string name="cat_other">Other</string>
+
+    <!-- Key Studio -->
+    <string name="studio_title">Key Decoder Studio</string>
+    <string name="studio_mode_photo">Photo Calibrate</string>
+    <string name="studio_mode_ruler">Screen Ruler</string>
+    <string name="studio_mode_bitting">Bitting CAD</string>
+    <string name="studio_mode_3d">3D Mesh</string>
+    <string name="studio_capture_photo">Camera Capture</string>
+    <string name="studio_pick_photo">Photo Picker</string>
+    <string name="studio_rectify_card">Rectify ID-1 Card (85.6×53.98 mm)</string>
+    <string name="studio_reset_corners">Reset Corners</string>
+    <string name="studio_card_calibrated">Orthographic 20 px/mm calibrated</string>
+    <string name="studio_drag_corners_hint">Drag the 4 corner targets to the edges of your ISO ID-1 reference card, then tap Rectify.</string>
+    <string name="studio_ruler_hint">Place your physical key directly on the screen. Align shoulder &amp; spine, then drag each pin depth node.</string>
+    <string name="studio_standard_label">Lock Standard</string>
+    <string name="studio_pin_count">Pins</string>
+    <string name="studio_blade_length">Blade Length (mm)</string>
+    <string name="studio_blade_width">Blade Width (mm)</string>
+    <string name="studio_blade_thickness">Thickness (mm)</string>
+    <string name="studio_bitting_code">Bitting Code</string>
+    <string name="studio_save_key">Save to Vault</string>
+    <string name="studio_key_name">Key Name</string>
+    <string name="studio_key_notes">Notes &amp; Tags</string>
+    <string name="studio_category">Category</string>
+    <string name="studio_saved_toast">Key saved to encrypted vault</string>
+    <string name="studio_camera_permission_title">Camera Access Needed</string>
+    <string name="studio_camera_permission_desc">Grant camera permission to photograph a key next to a reference card, or use the zero-permission Photo Picker.</string>
+    <string name="studio_grant_camera">Enable Camera</string>
+    <string name="studio_take_shot">Capture Frame</string>
+    <string name="studio_close_camera">Close Camera</string>
+    <string name="studio_3d_turntable">Auto Rotate</string>
+    <string name="studio_3d_wireframe">Wireframe</string>
+    <string name="studio_3d_drag_hint">Drag anywhere to rotate 360° • Inspect warding grooves &amp; pin cuts</string>
+    <string name="studio_longitudinal_btn">Longitudinal Pad</string>
+    <string name="studio_longitudinal_title">Longitudinal Key Pad (1:1)</string>
+    <string name="studio_longitudinal_hint">Place key vertically on screen. Drag nodes, use arrows, or tap 0 (Flat) to 9.</string>
+    <string name="studio_key_sides">Blade Type</string>
+    <string name="studio_single_sided">Single-Sided</string>
+    <string name="studio_double_sided">Double-Sided</string>
+    <string name="studio_quick_levels">Cut Level (0 = Flat → 9 = Deep)</string>
+    <string name="studio_flat_zero">0 Flat</string>
+    <string name="studio_arrow_shallower">Raise (Shallow)</string>
+    <string name="studio_arrow_deeper">Lower (Deeper)</string>
+    <string name="studio_arrow_prev_pin">Previous Pin</string>
+    <string name="studio_arrow_next_pin">Next Pin</string>
+
+    <!-- Templates & Reports -->
+    <string name="reports_title">Templates &amp; Fabrication</string>
+    <string name="reports_select_key">Select Key Profile</string>
+    <string name="reports_no_keys">Save a key in Key Studio first to generate STL, SVG, DXF, PDF, and PNG templates.</string>
+    <string name="reports_format_stl">3D Printable Mesh (.STL)</string>
+    <string name="reports_format_stl_desc">Watertight binary STL with extruded blade, bow hole &amp; keyway grooves.</string>
+    <string name="reports_format_svg">2D Vector Cut (.SVG)</string>
+    <string name="reports_format_svg_desc">1:1 millimeter-scale closed vector path for laser &amp; CNC mills.</string>
+    <string name="reports_format_dxf">AutoCAD CNC (.DXF)</string>
+    <string name="reports_format_dxf_desc">Standard R12 LWPOLYLINE geometry in exact millimeter units.</string>
+    <string name="reports_format_pdf">1:1 Scale Blueprint (.PDF)</string>
+    <string name="reports_format_pdf_desc">True physical 1:1 printout with 50×50 mm calibration square.</string>
+    <string name="reports_format_png">Blueprint Sheet (.PNG)</string>
+    <string name="reports_format_png_desc">High-DPI technical diagram with pin depth &amp; spacing table.</string>
+    <string name="reports_format_text">Structured Bitting Spec</string>
+    <string name="reports_format_text_desc">Share exact bitting code, standard, and pin depths as plain text.</string>
+    <string name="reports_save_saf">Save File</string>
+    <string name="reports_share_now">Share</string>
+    <string name="reports_backup_section">Vault Backup &amp; Restore</string>
+    <string name="reports_export_kcb">Export Encrypted Vault (.KCB)</string>
+    <string name="reports_export_json">Export JSON Backup (.JSON)</string>
+    <string name="reports_import_backup">Import Vault Backup (.KCB / .JSON)</string>
+    <string name="reports_export_success">Exported successfully: %1$s</string>
+    <string name="reports_import_success">Imported %1$d keys into vault</string>
+
+    <!-- Settings & Security -->
+    <string name="settings_title">Settings &amp; Security</string>
+    <string name="settings_security_section">Vault Security</string>
+    <string name="settings_change_pin">Change Vault PIN</string>
+    <string name="settings_biometric_title">Biometric Unlock</string>
+    <string name="settings_biometric_desc">Use fingerprint or face alongside PIN</string>
+    <string name="settings_autolock_title">Auto-Lock Timeout</string>
+    <string name="settings_calibration_section">Precision &amp; Calibration</string>
+    <string name="settings_dpi_title">Screen DPI Calibration</string>
+    <string name="settings_dpi_desc">Adjust until the reference bar matches an 85.60 mm card</string>
+    <string name="settings_unit_title">Measurement Unit</string>
+    <string name="settings_appearance_section">Appearance &amp; Language</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_privacy_section">Offline Isolation Status</string>
+    <string name="settings_privacy_desc">Zero network permissions • Local SQLCipher DB • AES-256-GCM Media Vault</string>
+    <string name="settings_storage_stats">Encrypted Records: %1$d keys • %2$d files (%3$s)</string>
+    <string name="autolock_immediate">Immediate</string>
+    <string name="autolock_30s">30 seconds</string>
+    <string name="autolock_1m">1 minute</string>
+    <string name="autolock_5m">5 minutes</string>
+    <string name="autolock_never">Never</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="lang_english">English</string>
+    <string name="lang_arabic">العربية</string>
+    <string name="unit_mm">Millimeters (mm)</string>
+    <string name="unit_mil">Thousandths (mil)</string>
+
+    <!-- About & Owner Credits -->
+    <string name="settings_about_section">Open Source &amp; Developer Credits</string>
+    <string name="settings_open_source_badge">Open Source Project</string>
+    <string name="settings_open_source_desc">Open-source, 100% offline engineering application with zero cloud or tracking dependencies.</string>
+    <string name="settings_dev_label_ar">برمجة وتطوير: أحمد أمين بن هرهرة</string>
+    <string name="settings_dev_label_en">Programmed &amp; Developed by: AHMED AMEEN BAN HARHARA</string>
+    <string name="settings_github_handle">GitHub: @ahharhara</string>
+    <string name="settings_github_copied">Copied @ahharhara</string>
+</resources>
