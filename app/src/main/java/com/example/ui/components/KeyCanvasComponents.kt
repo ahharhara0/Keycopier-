@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +32,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.KeyRecord
+import com.example.domain.model.KeyTipStyle
 import com.example.domain.model.Point2D
 import com.example.engine.KeyPolygonBuilder
 import com.example.export.Mesh3D
@@ -67,15 +67,18 @@ fun KeySilhouetteCanvas(
         record.bladeWidthMm,
         record.spacingsMm,
         record.depthsMm,
-        record.isDoubleSided
+        record.isDoubleSided,
+        record.flatWidthsMm,
+        record.leftSlopesDeg,
+        record.rightSlopesDeg,
+        record.tipStyle,
+        record.tipLengthMm,
+        record.tipOffsetMm,
+        record.bowScale,
+        record.customContourMm,
+        record.useExactPhotoContour
     ) {
-        KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        KeyPolygonBuilder.buildFromRecord(record)
     }
 
     Canvas(modifier = modifier) {
@@ -139,7 +142,6 @@ fun Key3DPreviewCanvas(
                 }
             }
     ) {
-        // Subtle CAD grid backdrop
         val gridStep = 36f
         var gx = 0f
         while (gx < size.width) {
@@ -163,10 +165,8 @@ fun Key3DPreviewCanvas(
             val dx = p.x - mesh.center.x
             val dy = p.y - mesh.center.y
             val dz = p.z - mesh.center.z
-            // Rotate around Y
             val x1 = dx * cosY + dz * sinY
             val z1 = -dx * sinY + dz * cosY
-            // Rotate around X
             val y2 = dy * cosX - z1 * sinX
             val z2 = dy * sinX + z1 * cosX
             return Vec3(x1, y2, z2)
@@ -192,7 +192,6 @@ fun Key3DPreviewCanvas(
             val rv2 = rotatePoint(tri.v2)
             val rv3 = rotatePoint(tri.v3)
 
-            // Backface culling in view space (except wireframe)
             val e1 = rv2 - rv1
             val e2 = rv3 - rv1
             val normal = (e1 cross e2).normalized()
@@ -243,7 +242,8 @@ fun Key3DPreviewCanvas(
 }
 
 /**
- * Interactive CAD Bitting Canvas with millimeter grid and draggable Pin Cut Depth/Spacing nodes.
+ * Arrow-controlled CAD Bitting Canvas with scalable lock frame & zero touch-drag interference.
+ * Tap only selects a pin; all movement & tooth shaping happen cleanly via directional arrows.
  */
 @Composable
 fun BittingCadCanvas(
@@ -253,8 +253,18 @@ fun BittingCadCanvas(
     depthsMm: List<Float>,
     selectedPinIndex: Int,
     isDoubleSided: Boolean = false,
+    flatWidthsMm: List<Float> = emptyList(),
+    leftSlopesDeg: List<Float> = emptyList(),
+    rightSlopesDeg: List<Float> = emptyList(),
+    tipStyle: KeyTipStyle = KeyTipStyle.STANDARD_TAPER,
+    tipLengthMm: Float = 2.6f,
+    tipOffsetMm: Float = 0f,
+    bowScale: Float = 1.0f,
+    frameZoom: Float = 1.0f,
+    customContourMm: List<Point2D> = emptyList(),
+    useExactPhotoContour: Boolean = false,
     rectifiedBitmap: Bitmap? = null,
-    onPinDrag: (pinIndex: Int, newDepthMm: Float, newSpacingMm: Float) -> Unit,
+    onSelectPin: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -267,83 +277,85 @@ fun BittingCadCanvas(
         )
     }
 
-    var activeDragPin by remember { mutableIntStateOf(-1) }
-    var activeDragBottomSide by remember { mutableIntStateOf(0) } // 0 = top edge, 1 = bottom edge
     val imageBitmap: ImageBitmap? = remember(rectifiedBitmap) {
         rectifiedBitmap?.asImageBitmap()
     }
 
-    val polygon = remember(bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
+    val polygon = remember(
+        bladeLengthMm,
+        bladeWidthMm,
+        spacingsMm,
+        depthsMm,
+        isDoubleSided,
+        flatWidthsMm,
+        leftSlopesDeg,
+        rightSlopesDeg,
+        tipStyle,
+        tipLengthMm,
+        tipOffsetMm,
+        bowScale,
+        customContourMm,
+        useExactPhotoContour
+    ) {
         KeyPolygonBuilder.buildKeyPolygon(
             bladeLengthMm = bladeLengthMm,
             bladeWidthMm = bladeWidthMm,
             spacingsMm = spacingsMm,
             depthsMm = depthsMm,
-            isDoubleSided = isDoubleSided
+            isDoubleSided = isDoubleSided,
+            flatWidthsMm = flatWidthsMm,
+            leftSlopesDeg = leftSlopesDeg,
+            rightSlopesDeg = rightSlopesDeg,
+            tipStyle = tipStyle,
+            tipLengthMm = tipLengthMm,
+            tipOffsetMm = tipOffsetMm,
+            bowScale = bowScale,
+            customContourMm = customContourMm,
+            useExactPhotoContour = useExactPhotoContour
         )
     }
 
     Canvas(
         modifier = modifier
             .background(BlueprintNavy)
-            .pointerInput(bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
+            .pointerInput(bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided, bowScale, frameZoom) {
                 val totalW = polygon.bowLengthMm + bladeLengthMm + 6f
-                val pxPerMm = (size.width / totalW) * 0.92f
+                val pxPerMm = (size.width / totalW) * 0.90f * frameZoom
                 val originX = (size.width - totalW * pxPerMm) * 0.5f + polygon.bowLengthMm * pxPerMm
                 val originY = if (isDoubleSided) size.height * 0.62f else size.height * 0.68f
 
-                detectDragGestures(
-                    onDragStart = { startOffset ->
-                        var nearestIdx = -1
-                        var bestDist = 72f
-                        var matchedBottom = 0
-                        spacingsMm.forEachIndexed { idx, spacing ->
-                            val depth = depthsMm.getOrElse(idx) { 0f }
-                            val px = originX + spacing * pxPerMm
-                            val pyTop = originY - (bladeWidthMm - depth) * pxPerMm
-                            val dTop = hypot(startOffset.x - px, startOffset.y - pyTop)
-                            if (dTop < bestDist) {
-                                bestDist = dTop
-                                nearestIdx = idx
-                                matchedBottom = 0
-                            }
-                            if (isDoubleSided) {
-                                val pyBot = originY - depth * pxPerMm
-                                val dBot = hypot(startOffset.x - px, startOffset.y - pyBot)
-                                if (dBot < bestDist) {
-                                    bestDist = dBot
-                                    nearestIdx = idx
-                                    matchedBottom = 1
-                                }
-                            }
+                detectTapGestures { tapOffset ->
+                    var nearestIdx = -1
+                    var bestDist = 72f
+                    spacingsMm.forEachIndexed { idx, spacing ->
+                        val depth = depthsMm.getOrElse(idx) { 0f }
+                        val px = originX + spacing * pxPerMm
+                        val pyTop = originY - (bladeWidthMm - depth) * pxPerMm
+                        val dTop = hypot(tapOffset.x - px, tapOffset.y - pyTop)
+                        if (dTop < bestDist) {
+                            bestDist = dTop
+                            nearestIdx = idx
                         }
-                        activeDragPin = nearestIdx
-                        activeDragBottomSide = matchedBottom
-                    },
-                    onDragEnd = { activeDragPin = -1 },
-                    onDragCancel = { activeDragPin = -1 },
-                    onDrag = { change, _ ->
-                        if (activeDragPin >= 0) {
-                            change.consume()
-                            val newSpacingMm = (change.position.x - originX) / pxPerMm
-                            val cutYFromSpineMm = (originY - change.position.y) / pxPerMm
-                            val newDepthMm = if (activeDragBottomSide == 1) {
-                                cutYFromSpineMm
-                            } else {
-                                bladeWidthMm - cutYFromSpineMm
+                        if (isDoubleSided) {
+                            val pyBot = originY - depth * pxPerMm
+                            val dBot = hypot(tapOffset.x - px, tapOffset.y - pyBot)
+                            if (dBot < bestDist) {
+                                bestDist = dBot
+                                nearestIdx = idx
                             }
-                            onPinDrag(activeDragPin, newDepthMm, newSpacingMm)
                         }
                     }
-                )
+                    if (nearestIdx >= 0) {
+                        onSelectPin(nearestIdx)
+                    }
+                }
             }
     ) {
         val totalW = polygon.bowLengthMm + bladeLengthMm + 6f
-        val pxPerMm = (size.width / totalW) * 0.92f
+        val pxPerMm = (size.width / totalW) * 0.90f * frameZoom
         val originX = (size.width - totalW * pxPerMm) * 0.5f + polygon.bowLengthMm * pxPerMm
         val originY = if (isDoubleSided) size.height * 0.62f else size.height * 0.68f
 
-        // Optional calibrated reference photo backdrop
         if (imageBitmap != null) {
             drawImage(
                 image = imageBitmap,
@@ -354,8 +366,8 @@ fun BittingCadCanvas(
         }
 
         // Millimeter CAD grid (1mm & 5mm lines)
-        val minMmX = -26
-        val maxMmX = (bladeLengthMm + 6).toInt()
+        val minMmX = -32
+        val maxMmX = (bladeLengthMm + 12).toInt()
         for (mm in minMmX..maxMmX) {
             val x = originX + mm * pxPerMm
             if (x < 0f || x > size.width) continue
@@ -367,7 +379,7 @@ fun BittingCadCanvas(
                 strokeWidth = if (isMajor) 1.5f else 0.7f
             )
         }
-        for (mm in -12..18) {
+        for (mm in -16..22) {
             val y = originY - mm * pxPerMm
             if (y < 0f || y > size.height) continue
             val isMajor = mm % 5 == 0
@@ -410,70 +422,63 @@ fun BittingCadCanvas(
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f))
         )
 
-        // Draggable Pin Nodes
-        spacingsMm.forEachIndexed { idx, spacing ->
-            val depth = depthsMm.getOrElse(idx) { 0f }
-            val px = originX + spacing * pxPerMm
-            val py = originY - (bladeWidthMm - depth) * pxPerMm
-            val isSelected = idx == selectedPinIndex
+        if (!useExactPhotoContour) {
+            // Pin Indicator Nodes (tap to select, move strictly via arrows)
+            spacingsMm.forEachIndexed { idx, spacing ->
+                val depth = depthsMm.getOrElse(idx) { 0f }
+                val px = originX + spacing * pxPerMm
+                val py = originY - (bladeWidthMm - depth) * pxPerMm
+                val isSelected = idx == selectedPinIndex
 
-            drawLine(
-                color = if (isSelected) StatusWarning else SecondaryTeal.copy(alpha = 0.75f),
-                start = Offset(px, py),
-                end = Offset(px, originY - (bladeWidthMm + 3.2f) * pxPerMm),
-                strokeWidth = if (isSelected) 2.2f else 1.3f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
-            )
+                drawLine(
+                    color = if (isSelected) StatusWarning else SecondaryTeal.copy(alpha = 0.75f),
+                    start = Offset(px, py),
+                    end = Offset(px, originY - (bladeWidthMm + 3.2f) * pxPerMm),
+                    strokeWidth = if (isSelected) 2.2f else 1.3f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                )
 
-            // Outer halo + core target
-            drawCircle(
-                color = if (isSelected) StatusWarning.copy(alpha = 0.35f) else SecondaryTeal.copy(alpha = 0.28f),
-                radius = if (isSelected) 24f else 18f,
-                center = Offset(px, py)
-            )
-            drawCircle(
-                color = if (isSelected) StatusWarning else SecondaryTeal,
-                radius = if (isSelected) 11f else 8.5f,
-                center = Offset(px, py)
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 3.5f,
-                center = Offset(px, py)
-            )
-
-            val txt = String.format(Locale.US, "P%d", idx + 1)
-            val measured = textMeasurer.measure(txt, labelStyle)
-            drawText(
-                textLayoutResult = measured,
-                topLeft = Offset(px - measured.size.width * 0.5f, originY - (bladeWidthMm + 5.2f) * pxPerMm)
-            )
-
-            if (isDoubleSided) {
-                val pyBot = originY - depth * pxPerMm
                 drawCircle(
-                    color = if (isSelected) StatusWarning.copy(alpha = 0.28f) else SecondaryTeal.copy(alpha = 0.22f),
-                    radius = if (isSelected) 18f else 14f,
-                    center = Offset(px, pyBot)
+                    color = if (isSelected) StatusWarning.copy(alpha = 0.35f) else SecondaryTeal.copy(alpha = 0.28f),
+                    radius = if (isSelected) 24f else 16f,
+                    center = Offset(px, py)
                 )
                 drawCircle(
                     color = if (isSelected) StatusWarning else SecondaryTeal,
-                    radius = if (isSelected) 9f else 7f,
-                    center = Offset(px, pyBot)
+                    radius = if (isSelected) 11f else 8f,
+                    center = Offset(px, py)
                 )
-                drawCircle(
-                    color = Color.White,
-                    radius = 2.8f,
-                    center = Offset(px, pyBot)
+                drawCircle(color = Color.White, radius = 3.5f, center = Offset(px, py))
+
+                val txt = String.format(Locale.US, "P%d", idx + 1)
+                val measured = textMeasurer.measure(txt, labelStyle)
+                drawText(
+                    textLayoutResult = measured,
+                    topLeft = Offset(px - measured.size.width * 0.5f, originY - (bladeWidthMm + 5.2f) * pxPerMm)
                 )
+
+                if (isDoubleSided) {
+                    val pyBot = originY - depth * pxPerMm
+                    drawCircle(
+                        color = if (isSelected) StatusWarning.copy(alpha = 0.28f) else SecondaryTeal.copy(alpha = 0.22f),
+                        radius = if (isSelected) 18f else 13f,
+                        center = Offset(px, pyBot)
+                    )
+                    drawCircle(
+                        color = if (isSelected) StatusWarning else SecondaryTeal,
+                        radius = if (isSelected) 9f else 6.5f,
+                        center = Offset(px, pyBot)
+                    )
+                    drawCircle(color = Color.White, radius = 2.8f, center = Offset(px, pyBot))
+                }
             }
         }
     }
 }
 
 /**
- * Physical 1:1 Screen Ruler (Flipper Zero Mode): uses real physical pixels-per-mm
- * so users can place a physical key directly on the screen glass and measure cuts.
+ * Physical 1:1 Screen Ruler (Flipper Zero Mode): zero touch-drag interference so resting
+ * a physical key on the glass never scrambles points. Supports frame scale adjustment & tap select.
  */
 @Composable
 fun ScreenRulerCanvas(
@@ -484,13 +489,22 @@ fun ScreenRulerCanvas(
     depthsMm: List<Float>,
     selectedPinIndex: Int,
     isDoubleSided: Boolean = false,
-    onPinDrag: (pinIndex: Int, newDepthMm: Float) -> Unit,
-    onBladeLengthChange: (Float) -> Unit,
+    flatWidthsMm: List<Float> = emptyList(),
+    leftSlopesDeg: List<Float> = emptyList(),
+    rightSlopesDeg: List<Float> = emptyList(),
+    tipStyle: KeyTipStyle = KeyTipStyle.STANDARD_TAPER,
+    tipLengthMm: Float = 2.6f,
+    tipOffsetMm: Float = 0f,
+    bowScale: Float = 1.0f,
+    frameZoom: Float = 1.0f,
+    customContourMm: List<Point2D> = emptyList(),
+    useExactPhotoContour: Boolean = false,
+    onSelectPin: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val metrics = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics
     val xdpi = if (screenDpiOverride > 50f) screenDpiOverride else metrics.xdpi.coerceAtLeast(160f)
-    val pxPerMm = xdpi / 25.4f
+    val pxPerMm = (xdpi / 25.4f) * frameZoom
     val textMeasurer = rememberTextMeasurer()
     val monoStyle = remember {
         TextStyle(
@@ -500,80 +514,75 @@ fun ScreenRulerCanvas(
         )
     }
 
-    val polygon = remember(bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
+    val polygon = remember(
+        bladeLengthMm,
+        bladeWidthMm,
+        spacingsMm,
+        depthsMm,
+        isDoubleSided,
+        flatWidthsMm,
+        leftSlopesDeg,
+        rightSlopesDeg,
+        tipStyle,
+        tipLengthMm,
+        tipOffsetMm,
+        bowScale,
+        customContourMm,
+        useExactPhotoContour
+    ) {
         KeyPolygonBuilder.buildKeyPolygon(
             bladeLengthMm = bladeLengthMm,
             bladeWidthMm = bladeWidthMm,
             spacingsMm = spacingsMm,
             depthsMm = depthsMm,
-            isDoubleSided = isDoubleSided
+            isDoubleSided = isDoubleSided,
+            flatWidthsMm = flatWidthsMm,
+            leftSlopesDeg = leftSlopesDeg,
+            rightSlopesDeg = rightSlopesDeg,
+            tipStyle = tipStyle,
+            tipLengthMm = tipLengthMm,
+            tipOffsetMm = tipOffsetMm,
+            bowScale = bowScale,
+            customContourMm = customContourMm,
+            useExactPhotoContour = useExactPhotoContour
         )
     }
-
-    var draggingTarget by remember { mutableIntStateOf(-1) } // -2 = tip handle, >=0 = pin index
-    var draggingBottom by remember { mutableIntStateOf(0) }
 
     Canvas(
         modifier = modifier
             .background(Color(0xFF060B16))
-            .pointerInput(pxPerMm, bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
-                val shoulderX = size.width * 0.16f
+            .pointerInput(pxPerMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
+                val shoulderX = size.width * 0.22f
                 val spineY = size.height * 0.62f
 
-                detectDragGestures(
-                    onDragStart = { start ->
-                        val tipX = shoulderX + bladeLengthMm * pxPerMm
-                        val tipY = spineY - bladeWidthMm * 0.5f * pxPerMm
-                        if (hypot(start.x - tipX, start.y - tipY) < 64f) {
-                            draggingTarget = -2
-                            return@detectDragGestures
+                detectTapGestures { tap ->
+                    var best = -1
+                    var bestD = 72f
+                    spacingsMm.forEachIndexed { idx, sp ->
+                        val depth = depthsMm.getOrElse(idx) { 0f }
+                        val px = shoulderX + sp * pxPerMm
+                        val py = spineY - (bladeWidthMm - depth) * pxPerMm
+                        val d = hypot(tap.x - px, tap.y - py)
+                        if (d < bestD) {
+                            bestD = d
+                            best = idx
                         }
-                        var best = -1
-                        var bestD = 72f
-                        var matchedBottom = 0
-                        spacingsMm.forEachIndexed { idx, sp ->
-                            val depth = depthsMm.getOrElse(idx) { 0f }
-                            val px = shoulderX + sp * pxPerMm
-                            val py = spineY - (bladeWidthMm - depth) * pxPerMm
-                            val d = hypot(start.x - px, start.y - py)
-                            if (d < bestD) {
-                                bestD = d
+                        if (isDoubleSided) {
+                            val pyBot = spineY - depth * pxPerMm
+                            val dBot = hypot(tap.x - px, tap.y - pyBot)
+                            if (dBot < bestD) {
+                                bestD = dBot
                                 best = idx
-                                matchedBottom = 0
                             }
-                            if (isDoubleSided) {
-                                val pyBot = spineY - depth * pxPerMm
-                                val dBot = hypot(start.x - px, start.y - pyBot)
-                                if (dBot < bestD) {
-                                    bestD = dBot
-                                    best = idx
-                                    matchedBottom = 1
-                                }
-                            }
-                        }
-                        draggingTarget = best
-                        draggingBottom = matchedBottom
-                    },
-                    onDragEnd = { draggingTarget = -1 },
-                    onDragCancel = { draggingTarget = -1 },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        if (draggingTarget == -2) {
-                            val newLen = ((change.position.x - shoulderX) / pxPerMm).coerceIn(18f, 45f)
-                            onBladeLengthChange(newLen)
-                        } else if (draggingTarget >= 0) {
-                            val cutYFromSpineMm = (spineY - change.position.y) / pxPerMm
-                            val depthMm = if (draggingBottom == 1) cutYFromSpineMm else bladeWidthMm - cutYFromSpineMm
-                            onPinDrag(draggingTarget, depthMm)
                         }
                     }
-                )
+                    if (best >= 0) onSelectPin(best)
+                }
             }
     ) {
-        val shoulderX = size.width * 0.16f
+        val shoulderX = size.width * 0.22f
         val spineY = size.height * 0.62f
 
-        // Physical Millimeter Ruler Ticks along Spine
         val maxMm = ((size.width - shoulderX) / pxPerMm).toInt().coerceAtLeast(35)
         drawLine(Color(0xFF334155), Offset(shoulderX, spineY), Offset(size.width, spineY), 2f)
         for (mm in 0..maxMm) {
@@ -590,7 +599,6 @@ fun ScreenRulerCanvas(
             }
         }
 
-        // Shoulder Stop Vertical Guide
         drawLine(
             color = SecondaryTeal,
             start = Offset(shoulderX, spineY - 14f * pxPerMm),
@@ -598,8 +606,6 @@ fun ScreenRulerCanvas(
             strokeWidth = 3f
         )
 
-        // Blade Contour Overlay (1:1 physical size)
-        val bladeW = bladeLengthMm * pxPerMm
         val bladeH = bladeWidthMm * pxPerMm
         val keyPath = Path()
         polygon.outerContour.forEachIndexed { idx, p ->
@@ -611,54 +617,59 @@ fun ScreenRulerCanvas(
         drawPath(keyPath, color = PrimaryBlue.copy(alpha = 0.22f))
         drawPath(keyPath, color = PrimaryBlue, style = Stroke(width = 2.2f, join = StrokeJoin.Round))
 
-        // Tip Length Drag Handle
-        val tipX = shoulderX + bladeW
-        val tipY = spineY - bladeH * 0.5f
-        drawCircle(PrimaryBlue, radius = 14f, center = Offset(tipX, tipY))
-        drawCircle(Color.White, radius = 5f, center = Offset(tipX, tipY))
+        val holePath = Path()
+        polygon.bowHoleContour.forEachIndexed { idx, p ->
+            val x = shoulderX + p.x * pxPerMm
+            val y = spineY - p.y * pxPerMm
+            if (idx == 0) holePath.moveTo(x, y) else holePath.lineTo(x, y)
+        }
+        holePath.close()
+        drawPath(holePath, color = Color(0xFF060B16))
+        drawPath(holePath, color = PrimaryBlue, style = Stroke(width = 1.8f))
 
-        // Pin Cut Nodes
-        spacingsMm.forEachIndexed { idx, sp ->
-            val depth = depthsMm.getOrElse(idx) { 0f }
-            val px = shoulderX + sp * pxPerMm
-            val py = spineY - (bladeWidthMm - depth) * pxPerMm
-            val selected = idx == selectedPinIndex
-            drawLine(
-                color = if (selected) StatusWarning else SecondaryTeal,
-                start = Offset(px, spineY - bladeH),
-                end = Offset(px, py),
-                strokeWidth = 2.5f
-            )
-            drawCircle(
-                color = if (selected) StatusWarning else SecondaryTeal,
-                radius = if (selected) 13f else 10f,
-                center = Offset(px, py)
-            )
-            drawCircle(Color.White, radius = 3.5f, center = Offset(px, py))
-
-            if (isDoubleSided) {
-                val pyBot = spineY - depth * pxPerMm
+        if (!useExactPhotoContour) {
+            spacingsMm.forEachIndexed { idx, sp ->
+                val depth = depthsMm.getOrElse(idx) { 0f }
+                val px = shoulderX + sp * pxPerMm
+                val py = spineY - (bladeWidthMm - depth) * pxPerMm
+                val selected = idx == selectedPinIndex
                 drawLine(
                     color = if (selected) StatusWarning else SecondaryTeal,
-                    start = Offset(px, spineY),
-                    end = Offset(px, pyBot),
+                    start = Offset(px, spineY - bladeH),
+                    end = Offset(px, py),
                     strokeWidth = 2.5f
                 )
                 drawCircle(
                     color = if (selected) StatusWarning else SecondaryTeal,
-                    radius = if (selected) 11f else 8.5f,
-                    center = Offset(px, pyBot)
+                    radius = if (selected) 13f else 9f,
+                    center = Offset(px, py)
                 )
-                drawCircle(Color.White, radius = 3f, center = Offset(px, pyBot))
+                drawCircle(Color.White, radius = 3.5f, center = Offset(px, py))
+
+                if (isDoubleSided) {
+                    val pyBot = spineY - depth * pxPerMm
+                    drawLine(
+                        color = if (selected) StatusWarning else SecondaryTeal,
+                        start = Offset(px, spineY),
+                        end = Offset(px, pyBot),
+                        strokeWidth = 2.5f
+                    )
+                    drawCircle(
+                        color = if (selected) StatusWarning else SecondaryTeal,
+                        radius = if (selected) 11f else 8f,
+                        center = Offset(px, pyBot)
+                    )
+                    drawCircle(Color.White, radius = 3f, center = Offset(px, pyBot))
+                }
             }
         }
     }
 }
 
 /**
- * Full-height Longitudinal (Vertical) 1:1 Physical Key Placement Pad.
- * Users place their key vertically on the screen (Bow at top, Blade extending downward),
- * and adjust teeth via touch drag on either single or double-sided blades.
+ * Full-height Longitudinal (Vertical) Physical Key Placement Pad.
+ * Touch-drag is COMPLETELY DISABLED so placing a metal key on screen never drags teeth.
+ * All teeth, frame size, and rear tip edits are driven exclusively by the precision arrow pad.
  */
 @Composable
 fun LongitudinalKeyPadCanvas(
@@ -670,15 +681,22 @@ fun LongitudinalKeyPadCanvas(
     bittingDigits: List<Int>,
     selectedPinIndex: Int,
     isDoubleSided: Boolean,
-    lockSpacingOnDrag: Boolean,
+    flatWidthsMm: List<Float> = emptyList(),
+    leftSlopesDeg: List<Float> = emptyList(),
+    rightSlopesDeg: List<Float> = emptyList(),
+    tipStyle: KeyTipStyle = KeyTipStyle.STANDARD_TAPER,
+    tipLengthMm: Float = 2.6f,
+    tipOffsetMm: Float = 0f,
+    bowScale: Float = 1.0f,
+    frameZoom: Float = 1.0f,
+    customContourMm: List<Point2D> = emptyList(),
+    useExactPhotoContour: Boolean = false,
     onSelectPin: (Int) -> Unit,
-    onPinDrag: (pinIndex: Int, newDepthMm: Float, newSpacingMm: Float?) -> Unit,
-    onBladeLengthChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val metrics = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics
     val ydpi = if (screenDpiOverride > 50f) screenDpiOverride else metrics.ydpi.coerceAtLeast(160f)
-    val pxPerMm = ydpi / 25.4f
+    val pxPerMm = (ydpi / 25.4f) * frameZoom
     val textMeasurer = rememberTextMeasurer()
     val rulerStyle = remember {
         TextStyle(
@@ -696,106 +714,80 @@ fun LongitudinalKeyPadCanvas(
         )
     }
 
-    val polygon = remember(bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
+    val polygon = remember(
+        bladeLengthMm,
+        bladeWidthMm,
+        spacingsMm,
+        depthsMm,
+        isDoubleSided,
+        flatWidthsMm,
+        leftSlopesDeg,
+        rightSlopesDeg,
+        tipStyle,
+        tipLengthMm,
+        tipOffsetMm,
+        bowScale,
+        customContourMm,
+        useExactPhotoContour
+    ) {
         KeyPolygonBuilder.buildKeyPolygon(
             bladeLengthMm = bladeLengthMm,
             bladeWidthMm = bladeWidthMm,
             spacingsMm = spacingsMm,
             depthsMm = depthsMm,
-            isDoubleSided = isDoubleSided
+            isDoubleSided = isDoubleSided,
+            flatWidthsMm = flatWidthsMm,
+            leftSlopesDeg = leftSlopesDeg,
+            rightSlopesDeg = rightSlopesDeg,
+            tipStyle = tipStyle,
+            tipLengthMm = tipLengthMm,
+            tipOffsetMm = tipOffsetMm,
+            bowScale = bowScale,
+            customContourMm = customContourMm,
+            useExactPhotoContour = useExactPhotoContour
         )
     }
-
-    var draggingTarget by remember { mutableIntStateOf(-1) } // -2 = tip handle, >=0 = pin index
-    var draggingLeftSide by remember { mutableIntStateOf(0) } // 0 = right cut edge, 1 = left mirrored edge
 
     Canvas(
         modifier = modifier
             .background(Color(0xFF060D1C))
-            .pointerInput(
-                pxPerMm,
-                bladeLengthMm,
-                bladeWidthMm,
-                spacingsMm,
-                depthsMm,
-                isDoubleSided,
-                lockSpacingOnDrag
-            ) {
+            .pointerInput(pxPerMm, bladeLengthMm, bladeWidthMm, spacingsMm, depthsMm, isDoubleSided) {
                 val centerX = size.width * 0.5f
-                val maxShoulderForBlade = (size.height - (bladeLengthMm + 6f) * pxPerMm).coerceAtLeast(20f)
-                val shoulderY = minOf(size.height * 0.28f, maxShoulderForBlade).coerceAtLeast(20f)
+                val maxShoulderForBlade = (size.height - (bladeLengthMm + 6f) * pxPerMm).coerceAtLeast(24f)
+                val shoulderY = minOf(size.height * 0.30f, maxShoulderForBlade).coerceAtLeast(24f)
 
-                detectDragGestures(
-                    onDragStart = { start ->
-                        val tipX = centerX
-                        val tipY = shoulderY + bladeLengthMm * pxPerMm
-                        if (hypot(start.x - tipX, start.y - tipY) < 64f) {
-                            draggingTarget = -2
-                            return@detectDragGestures
+                detectTapGestures { tap ->
+                    var best = -1
+                    var bestDist = 72f
+                    spacingsMm.forEachIndexed { idx, sp ->
+                        val depth = depthsMm.getOrElse(idx) { 0f }
+                        val py = shoulderY + sp * pxPerMm
+                        val pxRight = centerX + (bladeWidthMm * 0.5f - depth) * pxPerMm
+                        val dRight = hypot(tap.x - pxRight, tap.y - py)
+                        if (dRight < bestDist) {
+                            bestDist = dRight
+                            best = idx
                         }
-                        var best = -1
-                        var bestDist = 80f
-                        var matchedLeft = 0
-                        spacingsMm.forEachIndexed { idx, sp ->
-                            val depth = depthsMm.getOrElse(idx) { 0f }
-                            val py = shoulderY + sp * pxPerMm
-                            val pxRight = centerX + (bladeWidthMm * 0.5f - depth) * pxPerMm
-                            val dRight = hypot(start.x - pxRight, start.y - py)
-                            if (dRight < bestDist) {
-                                bestDist = dRight
+                        if (isDoubleSided) {
+                            val pxLeft = centerX + (depth - bladeWidthMm * 0.5f) * pxPerMm
+                            val dLeft = hypot(tap.x - pxLeft, tap.y - py)
+                            if (dLeft < bestDist) {
+                                bestDist = dLeft
                                 best = idx
-                                matchedLeft = 0
                             }
-                            if (isDoubleSided) {
-                                val pxLeft = centerX + (depth - bladeWidthMm * 0.5f) * pxPerMm
-                                val dLeft = hypot(start.x - pxLeft, start.y - py)
-                                if (dLeft < bestDist) {
-                                    bestDist = dLeft
-                                    best = idx
-                                    matchedLeft = 1
-                                }
-                            }
-                        }
-                        draggingTarget = best
-                        draggingLeftSide = matchedLeft
-                        if (best >= 0) {
-                            onSelectPin(best)
-                        }
-                    },
-                    onDragEnd = { draggingTarget = -1 },
-                    onDragCancel = { draggingTarget = -1 },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        if (draggingTarget == -2) {
-                            val newLen = ((change.position.y - shoulderY) / pxPerMm).coerceIn(18f, 45f)
-                            onBladeLengthChange(newLen)
-                        } else if (draggingTarget >= 0) {
-                            val offsetFromCenterMm = (change.position.x - centerX) / pxPerMm
-                            val halfW = bladeWidthMm * 0.5f
-                            val newDepthMm = if (draggingLeftSide == 1) {
-                                halfW + offsetFromCenterMm
-                            } else {
-                                halfW - offsetFromCenterMm
-                            }
-                            val newSpacingMm = if (lockSpacingOnDrag) {
-                                null
-                            } else {
-                                (change.position.y - shoulderY) / pxPerMm
-                            }
-                            onPinDrag(draggingTarget, newDepthMm, newSpacingMm)
                         }
                     }
-                )
+                    if (best >= 0) onSelectPin(best)
+                }
             }
     ) {
         val centerX = size.width * 0.5f
-        val maxShoulderForBlade = (size.height - (bladeLengthMm + 6f) * pxPerMm).coerceAtLeast(20f)
-        val shoulderY = minOf(size.height * 0.28f, maxShoulderForBlade).coerceAtLeast(20f)
+        val maxShoulderForBlade = (size.height - (bladeLengthMm + 6f) * pxPerMm).coerceAtLeast(24f)
+        val shoulderY = minOf(size.height * 0.30f, maxShoulderForBlade).coerceAtLeast(24f)
         val halfW = bladeWidthMm * 0.5f
 
-        // Subtle millimeter vertical grid around blade
         val maxGridMm = ((size.height - shoulderY) / pxPerMm).toInt().coerceAtLeast(40)
-        for (mm in -25..maxGridMm) {
+        for (mm in -30..maxGridMm) {
             val gy = shoulderY + mm * pxPerMm
             if (gy < 0f || gy > size.height) continue
             val isMajor = mm % 5 == 0
@@ -807,8 +799,7 @@ fun LongitudinalKeyPadCanvas(
             )
         }
 
-        // Physical Millimeter Vertical Ruler along left margin
-        val rulerX = (centerX - 18f * pxPerMm).coerceAtLeast(42f)
+        val rulerX = (centerX - (halfW + 14f) * pxPerMm).coerceAtLeast(38f)
         drawLine(Color(0xFF334155), Offset(rulerX, shoulderY), Offset(rulerX, size.height), 2f)
         for (mm in 0..maxGridMm) {
             val ry = shoulderY + mm * pxPerMm
@@ -828,7 +819,6 @@ fun LongitudinalKeyPadCanvas(
             }
         }
 
-        // Horizontal Shoulder Stop Guide (0 mm)
         drawLine(
             color = SecondaryTeal,
             start = Offset(rulerX - 10f, shoulderY),
@@ -837,16 +827,14 @@ fun LongitudinalKeyPadCanvas(
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 6f))
         )
 
-        // Center Spine Axis
         drawLine(
             color = Color(0xFF475569),
-            start = Offset(centerX, shoulderY - 24f * pxPerMm),
+            start = Offset(centerX, shoulderY - polygon.bowLengthMm * pxPerMm),
             end = Offset(centerX, shoulderY + (bladeLengthMm + 4f) * pxPerMm),
             strokeWidth = 1.2f,
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
         )
 
-        // Rotated 90deg clockwise 1:1 Key Polygon (Bow on top, Blade extending downward)
         val outerPath = Path()
         polygon.outerContour.forEachIndexed { idx, p ->
             val sx = centerX + (p.y - halfW) * pxPerMm
@@ -868,86 +856,77 @@ fun LongitudinalKeyPadCanvas(
         drawPath(holePath, color = Color(0xFF060D1C))
         drawPath(holePath, color = Color(0xFF38BDF8), style = Stroke(width = 2.2f))
 
-        // Tip Length Drag Handle
-        val tipY = shoulderY + bladeLengthMm * pxPerMm
-        drawCircle(PrimaryBlue, radius = 14f, center = Offset(centerX, tipY))
-        drawCircle(Color.White, radius = 5f, center = Offset(centerX, tipY))
+        if (!useExactPhotoContour) {
+            val rightOuterX = centerX + halfW * pxPerMm
+            val leftOuterX = centerX - halfW * pxPerMm
+            spacingsMm.forEachIndexed { idx, sp ->
+                val depth = depthsMm.getOrElse(idx) { 0f }
+                val digit = bittingDigits.getOrNull(idx) ?: 0
+                val py = shoulderY + sp * pxPerMm
+                val pxRight = centerX + (halfW - depth) * pxPerMm
+                val isSelected = idx == selectedPinIndex
 
-        // Pin Cut Nodes & Callout Tags
-        val rightOuterX = centerX + halfW * pxPerMm
-        val leftOuterX = centerX - halfW * pxPerMm
-        spacingsMm.forEachIndexed { idx, sp ->
-            val depth = depthsMm.getOrElse(idx) { 0f }
-            val digit = bittingDigits.getOrNull(idx) ?: 0
-            val py = shoulderY + sp * pxPerMm
-            val pxRight = centerX + (halfW - depth) * pxPerMm
-            val isSelected = idx == selectedPinIndex
-
-            // Depth indicator bar on right edge
-            drawLine(
-                color = if (isSelected) StatusWarning else SecondaryTeal,
-                start = Offset(rightOuterX, py),
-                end = Offset(pxRight, py),
-                strokeWidth = if (isSelected) 3f else 2f
-            )
-            // Selection horizontal crosshair
-            if (isSelected) {
-                drawLine(
-                    color = StatusWarning.copy(alpha = 0.45f),
-                    start = Offset(rulerX, py),
-                    end = Offset(size.width - 16f, py),
-                    strokeWidth = 1.4f,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
-                )
-            }
-
-            // Right draggable pin node
-            drawCircle(
-                color = if (isSelected) StatusWarning.copy(alpha = 0.32f) else SecondaryTeal.copy(alpha = 0.24f),
-                radius = if (isSelected) 24f else 17f,
-                center = Offset(pxRight, py)
-            )
-            drawCircle(
-                color = if (isSelected) StatusWarning else SecondaryTeal,
-                radius = if (isSelected) 12f else 9f,
-                center = Offset(pxRight, py)
-            )
-            drawCircle(Color.White, radius = 3.5f, center = Offset(pxRight, py))
-
-            // Symmetric left node if Double-Sided
-            if (isDoubleSided) {
-                val pxLeft = centerX + (depth - halfW) * pxPerMm
                 drawLine(
                     color = if (isSelected) StatusWarning else SecondaryTeal,
-                    start = Offset(leftOuterX, py),
-                    end = Offset(pxLeft, py),
+                    start = Offset(rightOuterX, py),
+                    end = Offset(pxRight, py),
                     strokeWidth = if (isSelected) 3f else 2f
                 )
+                if (isSelected) {
+                    drawLine(
+                        color = StatusWarning.copy(alpha = 0.45f),
+                        start = Offset(rulerX, py),
+                        end = Offset(size.width - 16f, py),
+                        strokeWidth = 1.4f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                    )
+                }
+
                 drawCircle(
-                    color = if (isSelected) StatusWarning.copy(alpha = 0.28f) else SecondaryTeal.copy(alpha = 0.20f),
-                    radius = if (isSelected) 20f else 15f,
-                    center = Offset(pxLeft, py)
+                    color = if (isSelected) StatusWarning.copy(alpha = 0.32f) else SecondaryTeal.copy(alpha = 0.24f),
+                    radius = if (isSelected) 22f else 15f,
+                    center = Offset(pxRight, py)
                 )
                 drawCircle(
                     color = if (isSelected) StatusWarning else SecondaryTeal,
-                    radius = if (isSelected) 10f else 8f,
-                    center = Offset(pxLeft, py)
+                    radius = if (isSelected) 11f else 8f,
+                    center = Offset(pxRight, py)
                 )
-                drawCircle(Color.White, radius = 3f, center = Offset(pxLeft, py))
-            }
+                drawCircle(Color.White, radius = 3.5f, center = Offset(pxRight, py))
 
-            // Callout label on the right side
-            val levelDisplay = if (depth <= 0.08f) "0" else "$digit"
-            val labelText = String.format(Locale.US, "P%d [%s] %.2f", idx + 1, levelDisplay, depth)
-            val measured = textMeasurer.measure(
-                labelText,
-                pinLabelStyle.copy(color = if (isSelected) StatusWarning else Color(0xFFCBD5E1))
-            )
-            val labelX = (rightOuterX + 20f).coerceAtMost(size.width - measured.size.width - 8f)
-            drawText(
-                textLayoutResult = measured,
-                topLeft = Offset(labelX, py - measured.size.height * 0.5f)
-            )
+                if (isDoubleSided) {
+                    val pxLeft = centerX + (depth - halfW) * pxPerMm
+                    drawLine(
+                        color = if (isSelected) StatusWarning else SecondaryTeal,
+                        start = Offset(leftOuterX, py),
+                        end = Offset(pxLeft, py),
+                        strokeWidth = if (isSelected) 3f else 2f
+                    )
+                    drawCircle(
+                        color = if (isSelected) StatusWarning.copy(alpha = 0.28f) else SecondaryTeal.copy(alpha = 0.20f),
+                        radius = if (isSelected) 18f else 13f,
+                        center = Offset(pxLeft, py)
+                    )
+                    drawCircle(
+                        color = if (isSelected) StatusWarning else SecondaryTeal,
+                        radius = if (isSelected) 9.5f else 7.5f,
+                        center = Offset(pxLeft, py)
+                    )
+                    drawCircle(Color.White, radius = 3f, center = Offset(pxLeft, py))
+                }
+
+                val levelDisplay = if (depth <= 0.08f) "0" else "$digit"
+                val labelText = String.format(Locale.US, "P%d [%s] %.2f", idx + 1, levelDisplay, depth)
+                val measured = textMeasurer.measure(
+                    labelText,
+                    pinLabelStyle.copy(color = if (isSelected) StatusWarning else Color(0xFFCBD5E1))
+                )
+                val labelX = (rightOuterX + 18f).coerceAtMost(size.width - measured.size.width - 8f)
+                drawText(
+                    textLayoutResult = measured,
+                    topLeft = Offset(labelX, py - measured.size.height * 0.5f)
+                )
+            }
         }
     }
 }

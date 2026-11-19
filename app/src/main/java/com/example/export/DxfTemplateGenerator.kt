@@ -11,13 +11,7 @@ import java.util.Locale
 object DxfTemplateGenerator {
 
     fun generateDxf(record: KeyRecord): String {
-        val polygon = KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        val polygon = KeyPolygonBuilder.buildFromRecord(record)
 
         val sb = StringBuilder(2048)
         // Minimal compliant DXF HEADER

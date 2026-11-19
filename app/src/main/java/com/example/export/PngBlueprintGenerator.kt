@@ -41,13 +41,7 @@ object PngBlueprintGenerator {
         }
 
         val spec = KeyStandards.getById(record.keyStandardId)
-        val polygon = KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        val polygon = KeyPolygonBuilder.buildFromRecord(record)
 
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#F8FAFC")

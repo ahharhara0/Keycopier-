@@ -43,13 +43,7 @@ data class Mesh3D(
 object StlMeshGenerator {
 
     fun generateMesh(record: KeyRecord): Mesh3D {
-        val polygon = KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        val polygon = KeyPolygonBuilder.buildFromRecord(record)
         val spec = KeyStandards.getById(record.keyStandardId)
         return buildMeshFromPolygon(
             polygon = polygon,

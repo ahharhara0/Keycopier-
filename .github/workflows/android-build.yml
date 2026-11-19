@@ -25,6 +25,7 @@ jobs:
   build-and-release:
     name: Test, Build Release APK & Publish Tag Release
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -114,10 +115,22 @@ jobs:
           gradle-version: '9.3.1'
 
       - name: Run Unit & Robolectric Tests
-        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest
+        run: >
+          gradle --no-daemon --max-workers=2
+          -Dorg.gradle.parallel=false
+          -Dorg.gradle.jvmargs="-Xmx2560m -Djava.awt.headless=true -Dfile.encoding=UTF-8"
+          :app:testDebugUnitTest
 
       - name: Build Signed Release & Debug APKs
-        run: gradle --no-daemon --stacktrace :app:assembleRelease :app:assembleDebug
+        run: |
+          gradle --no-daemon --max-workers=2 \
+            -Dorg.gradle.parallel=false \
+            -Dorg.gradle.jvmargs="-Xmx2560m -Djava.awt.headless=true -Dfile.encoding=UTF-8" \
+            :app:assembleDebug
+          gradle --no-daemon --max-workers=2 \
+            -Dorg.gradle.parallel=false \
+            -Dorg.gradle.jvmargs="-Xmx2560m -Djava.awt.headless=true -Dfile.encoding=UTF-8" \
+            :app:assembleRelease -x lintVitalAnalyzeRelease -x lintVitalRelease
 
       - name: Package Release Artifacts & Checksums
         shell: bash

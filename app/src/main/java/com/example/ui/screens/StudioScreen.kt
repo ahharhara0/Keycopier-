@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -28,15 +27,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
@@ -87,18 +84,20 @@ import com.example.domain.model.AppLanguage
 import com.example.domain.model.AppSettings
 import com.example.domain.model.KeyCategory
 import com.example.domain.model.KeyStandards
-import com.example.engine.BittingCalculator
 import com.example.ui.StudioMode
 import com.example.ui.StudioUiState
 import com.example.ui.StudioViewModel
 import com.example.ui.components.BittingCadCanvas
+import com.example.ui.components.DirectionalToothControlPad
+import com.example.ui.components.FrameZoomCompactBar
 import com.example.ui.components.Key3DPreviewCanvas
+import com.example.ui.components.LockFrameResizeSection
 import com.example.ui.components.PerspectiveCornerCanvas
 import com.example.ui.components.ScreenRulerCanvas
+import com.example.ui.components.TipCustomizationSection
 import com.example.ui.theme.SecondaryTeal
 import com.example.ui.theme.StatusSuccess
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +113,7 @@ fun StudioScreen(
     val scope = rememberCoroutineScope()
     var showSaveSheet by remember { mutableStateOf(false) }
     var showStandardMenu by remember { mutableStateOf(false) }
+    var showCardRectifierSection by remember { mutableStateOf(false) }
     var autoRotate3D by remember { mutableStateOf(true) }
     var wireframe3D by remember { mutableStateOf(false) }
     var bittingEditText by remember(state.bittingResult.bittingCode) {
@@ -348,7 +348,9 @@ fun StudioScreen(
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("studio_capture_photo_btn"),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -361,7 +363,9 @@ fun StudioScreen(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("studio_pick_photo_btn"),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -371,82 +375,235 @@ fun StudioScreen(
                 }
 
                 if (state.sourceBitmap != null) {
-                    Text(
-                        text = stringResource(R.string.studio_drag_corners_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(260.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                    ) {
-                        PerspectiveCornerCanvas(
-                            bitmap = state.sourceBitmap,
-                            corners = state.cardCorners,
-                            onCornerMoved = { idx, pt -> viewModel.updateCorner(idx, pt) }
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { viewModel.resetCorners() },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.studio_reset_corners))
-                        }
-                        Button(
-                            onClick = { viewModel.rectifyReferenceCard() },
-                            enabled = !state.isRectifying,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            if (state.isRectifying) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    if (state.isAnalyzingPhoto) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp)
+                                Text(
+                                    text = stringResource(R.string.studio_photo_analyzing),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.studio_rectify_card), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
 
-                    if (state.rectifiedBitmap != null) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = StatusSuccess.copy(alpha = 0.12f)
+                    if (state.photoOverlayBitmap != null) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (state.photoConfidencePercent > 0) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = StatusSuccess.copy(alpha = 0.14f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusSuccess)
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.studio_photo_detected,
+                                                    state.photoConfidencePercent,
+                                                    state.pinCount
+                                                ),
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = StatusSuccess,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Image(
+                                    bitmap = state.photoOverlayBitmap.asImageBitmap(),
+                                    contentDescription = "Detected key silhouette overlay",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(230.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                )
+
+                                // 100% Exact Photo Contour Toggle
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.studio_photo_exact_contour),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.studio_photo_exact_contour_desc),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Switch(
+                                        checked = state.useExactPhotoContour,
+                                        onCheckedChange = { viewModel.setUseExactPhotoContour(it) },
+                                        enabled = state.customContourMm.size >= 12
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.analyzePhotoToKeyAnd3D() },
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            stringResource(R.string.studio_photo_reanalyze),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { viewModel.setMode(StudioMode.PREVIEW_3D) },
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1.1f)
+                                            .testTag("studio_photo_view_3d_btn")
+                                    ) {
+                                        Icon(Icons.Default.ViewInAr, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            stringResource(R.string.studio_photo_view_3d),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Optional ISO ID-1 Card 4-Corner Perspective Rectification Card
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .clickable { showCardRectifierSection = !showCardRectifierSection }
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusSuccess)
                                 Text(
-                                    text = stringResource(R.string.studio_card_calibrated),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = StatusSuccess
+                                    text = stringResource(R.string.studio_photo_card_section),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = if (showCardRectifierSection) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = null
                                 )
                             }
+
+                            if (showCardRectifierSection) {
+                                Text(
+                                    text = stringResource(R.string.studio_drag_corners_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(240.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                ) {
+                                    PerspectiveCornerCanvas(
+                                        bitmap = state.sourceBitmap,
+                                        corners = state.cardCorners,
+                                        onCornerMoved = { idx, pt -> viewModel.updateCorner(idx, pt) }
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.resetCorners() },
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(stringResource(R.string.studio_reset_corners))
+                                    }
+                                    Button(
+                                        onClick = { viewModel.rectifyReferenceCard() },
+                                        enabled = !state.isRectifying,
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        if (state.isRectifying) {
+                                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                        } else {
+                                            Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        }
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(stringResource(R.string.studio_rectify_card), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+
+                                if (state.rectifiedBitmap != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = StatusSuccess.copy(alpha = 0.12f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusSuccess)
+                                            Text(
+                                                text = stringResource(R.string.studio_card_calibrated),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = StatusSuccess
+                                            )
+                                        }
+                                    }
+                                    Image(
+                                        bitmap = state.rectifiedBitmap.asImageBitmap(),
+                                        contentDescription = "Rectified orthographic card",
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(170.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .clickable { viewModel.setMode(StudioMode.PREVIEW_3D) }
+                                    )
+                                }
+                            }
                         }
-                        Image(
-                            bitmap = state.rectifiedBitmap.asImageBitmap(),
-                            contentDescription = "Rectified orthographic card",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .clickable { viewModel.setMode(StudioMode.BITTING_CAD) }
-                        )
                     }
                 } else {
                     Card(
@@ -455,7 +612,12 @@ fun StudioScreen(
                             .height(210.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
                                 text = stringResource(R.string.studio_drag_corners_hint),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -486,18 +648,32 @@ fun StudioScreen(
                         depthsMm = state.depthsMm,
                         selectedPinIndex = state.selectedPinIndex,
                         isDoubleSided = state.isDoubleSided,
-                        onPinDrag = { idx, depth -> viewModel.updatePinDepth(idx, depth) },
-                        onBladeLengthChange = { len -> viewModel.updateBladeDimensions(lengthMm = len) },
+                        flatWidthsMm = state.flatWidthsMm,
+                        leftSlopesDeg = state.leftSlopesDeg,
+                        rightSlopesDeg = state.rightSlopesDeg,
+                        tipStyle = state.tipStyle,
+                        tipLengthMm = state.tipLengthMm,
+                        tipOffsetMm = state.tipOffsetMm,
+                        bowScale = state.bowScale,
+                        frameZoom = state.frameZoom,
+                        customContourMm = state.customContourMm,
+                        useExactPhotoContour = state.useExactPhotoContour,
+                        onSelectPin = { idx -> viewModel.selectPin(idx) },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+                FrameZoomCompactBar(
+                    frameZoom = state.frameZoom,
+                    onZoomChange = { viewModel.updateFrameZoom(it) },
+                    onReset = { viewModel.resetFrameZoom() }
+                )
             }
 
             StudioMode.BITTING_CAD -> {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(245.dp)
+                        .height(250.dp)
                         .clip(RoundedCornerShape(16.dp))
                 ) {
                     BittingCadCanvas(
@@ -507,21 +683,60 @@ fun StudioScreen(
                         depthsMm = state.depthsMm,
                         selectedPinIndex = state.selectedPinIndex,
                         isDoubleSided = state.isDoubleSided,
+                        flatWidthsMm = state.flatWidthsMm,
+                        leftSlopesDeg = state.leftSlopesDeg,
+                        rightSlopesDeg = state.rightSlopesDeg,
+                        tipStyle = state.tipStyle,
+                        tipLengthMm = state.tipLengthMm,
+                        tipOffsetMm = state.tipOffsetMm,
+                        bowScale = state.bowScale,
+                        frameZoom = state.frameZoom,
+                        customContourMm = state.customContourMm,
+                        useExactPhotoContour = state.useExactPhotoContour,
                         rectifiedBitmap = state.rectifiedBitmap,
-                        onPinDrag = { idx, depth, spacing ->
-                            viewModel.updatePinDepth(idx, depth)
-                            viewModel.updatePinSpacing(idx, spacing)
-                        },
+                        onSelectPin = { idx -> viewModel.selectPin(idx) },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+                FrameZoomCompactBar(
+                    frameZoom = state.frameZoom,
+                    onZoomChange = { viewModel.updateFrameZoom(it) },
+                    onReset = { viewModel.resetFrameZoom() }
+                )
             }
 
             StudioMode.PREVIEW_3D -> {
+                if (state.customContourMm.size >= 12) {
+                    Surface(
+                        color = SecondaryTeal.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = stringResource(R.string.studio_photo_exact_contour),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = SecondaryTeal,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = state.useExactPhotoContour,
+                                onCheckedChange = { viewModel.setUseExactPhotoContour(it) }
+                            )
+                        }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(265.dp)
+                        .height(275.dp)
                         .clip(RoundedCornerShape(16.dp))
                 ) {
                     Key3DPreviewCanvas(
@@ -558,7 +773,7 @@ fun StudioScreen(
             }
         }
 
-        // Precision Pin Selector & 0.05mm Steppers (shared for CAD & Screen Ruler)
+        // Precision Arrow-Only Tooth Controls (for Bitting CAD & Screen Ruler)
         if (state.mode == StudioMode.BITTING_CAD || state.mode == StudioMode.SCREEN_RULER) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(
@@ -607,211 +822,31 @@ fun StudioScreen(
                         }
                     }
 
-                    // Pin Selector Chips with Prev/Next Arrows
-                    val activeIdx = state.selectedPinIndex.coerceIn(0, state.pinCount - 1)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        IconButton(
-                            onClick = { viewModel.selectPin((activeIdx - 1).coerceAtLeast(0)) },
-                            enabled = activeIdx > 0,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                contentDescription = stringResource(R.string.studio_arrow_prev_pin)
-                            )
-                        }
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            val decodedPins = state.bittingResult.pins
-                            for (idx in 0 until state.pinCount) {
-                                val pinInfo = decodedPins.getOrNull(idx)
-                                val depthVal = state.depthsMm.getOrElse(idx) { 0f }
-                                val labelDigit = if (depthVal <= 0.08f) "0" else "${pinInfo?.codeDigit ?: "-"}"
-                                FilterChip(
-                                    selected = state.selectedPinIndex == idx,
-                                    onClick = { viewModel.selectPin(idx) },
-                                    label = {
-                                        Text("P${idx + 1}: $labelDigit")
-                                    }
-                                )
-                            }
-                        }
-                        IconButton(
-                            onClick = { viewModel.selectPin((activeIdx + 1).coerceAtMost(state.pinCount - 1)) },
-                            enabled = activeIdx < state.pinCount - 1,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = stringResource(R.string.studio_arrow_next_pin)
-                            )
-                        }
-                    }
-
-                    // Active Pin Depth + Level Up/Down Arrows + 0..9 Quick Level Grid
-                    val activeDepth = state.depthsMm.getOrElse(activeIdx) { 0f }
-                    val activeSpacing = state.spacingsMm.getOrElse(activeIdx) { 5f }
-                    val activeDecoded = state.bittingResult.pins.getOrNull(activeIdx)
-                    val nearestLevel = viewModel.nearestQuickLevel(activeDepth)
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FilledTonalButton(
-                            onClick = { viewModel.stepPinLevel(activeIdx, -1) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .testTag("studio_arrow_up"),
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowUp,
-                                contentDescription = stringResource(R.string.studio_arrow_shallower)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                stringResource(R.string.studio_arrow_shallower),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                        FilledTonalButton(
-                            onClick = { viewModel.stepPinLevel(activeIdx, +1) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .testTag("studio_arrow_down"),
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowDown,
-                                contentDescription = stringResource(R.string.studio_arrow_deeper)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                stringResource(R.string.studio_arrow_deeper),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
-
-                    QuickCutLevelBar(
-                        selectedLevel = nearestLevel,
-                        isFlat = activeDepth <= 0.08f,
-                        onSelectLevel = { lvl -> viewModel.setPinLevelCode(activeIdx, lvl) }
+                    // Full 8-way Directional & Diagonal Slant Arrow Pad + 0..9 Quick Levels
+                    DirectionalToothControlPad(
+                        state = state,
+                        settings = settings,
+                        viewModel = viewModel,
+                        tagPrefix = "studio"
                     )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Pin #${activeIdx + 1} Depth",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            Text(
-                                text = "${BittingCalculator.formatDimension(activeDepth, settings.preferredUnit)} " +
-                                    "(Δ ${String.format(Locale.US, "%+.2f", activeDecoded?.errorDeltaMm ?: 0f)} mm)",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = SecondaryTeal
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(
-                                onClick = { viewModel.updatePinDepth(activeIdx, activeDepth - 0.05f) },
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("studio_depth_minus")
-                            ) {
-                                Text("-0.05")
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            OutlinedButton(
-                                onClick = { viewModel.updatePinDepth(activeIdx, activeDepth + 0.05f) },
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("studio_depth_plus")
-                            ) {
-                                Text("+0.05")
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Pin #${activeIdx + 1} Pos",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            Text(
-                                text = BittingCalculator.formatDimension(activeSpacing, settings.preferredUnit),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(
-                                onClick = { viewModel.updatePinSpacing(activeIdx, activeSpacing - 0.05f) },
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("-0.05")
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            OutlinedButton(
-                                onClick = { viewModel.updatePinSpacing(activeIdx, activeSpacing + 0.05f) },
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("+0.05")
-                            }
-                        }
-                    }
-
-                    // Blade Thickness & Length Quick Steppers
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        DimensionMiniCard(
-                            label = stringResource(R.string.studio_blade_length),
-                            value = String.format(Locale.US, "%.2f", state.bladeLengthMm),
-                            onMinus = { viewModel.updateBladeDimensions(lengthMm = state.bladeLengthMm - 0.5f) },
-                            onPlus = { viewModel.updateBladeDimensions(lengthMm = state.bladeLengthMm + 0.5f) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        DimensionMiniCard(
-                            label = stringResource(R.string.studio_blade_thickness),
-                            value = String.format(Locale.US, "%.2f", state.bladeThicknessMm),
-                            onMinus = { viewModel.updateBladeDimensions(thicknessMm = state.bladeThicknessMm - 0.05f) },
-                            onPlus = { viewModel.updateBladeDimensions(thicknessMm = state.bladeThicknessMm + 0.05f) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
                 }
             }
+        }
+
+        // Lock Frame Resize/Scaling & Rear Tip Customization (live in CAD, Ruler, and 3D)
+        if (state.mode == StudioMode.BITTING_CAD ||
+            state.mode == StudioMode.SCREEN_RULER ||
+            state.mode == StudioMode.PREVIEW_3D
+        ) {
+            LockFrameResizeSection(
+                state = state,
+                viewModel = viewModel
+            )
+            TipCustomizationSection(
+                state = state,
+                settings = settings,
+                viewModel = viewModel
+            )
         }
     }
 
@@ -913,35 +948,4 @@ private fun ModeChip(
         label = { Text(label) },
         modifier = Modifier.testTag(tag)
     )
-}
-
-@Composable
-private fun DimensionMiniCard(
-    label: String,
-    value: String,
-    onMinus: () -> Unit,
-    onPlus: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    ) {
-        Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                IconButton(onClick = onMinus, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
-                }
-                Text(value, style = MaterialTheme.typography.labelLarge)
-                IconButton(onClick = onPlus, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
-                }
-            }
-        }
-    }
 }

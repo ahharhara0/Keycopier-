@@ -86,6 +86,65 @@ class SecurityAndUiRobolectricTest {
     }
 
     @Test
+    fun photoAnalyzer_extractsKeyContourAndGeneratesExact3dStlMesh() {
+        val sc1 = KeyStandards.getById("SC1")
+        val w = 420
+        val h = 220
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val px = IntArray(w * h) { android.graphics.Color.WHITE }
+        val keyColor = android.graphics.Color.rgb(58, 62, 68)
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val inBow = x in 40..135 && y in 58..162
+                val cutDepth = when {
+                    x in 176..196 -> (18 - kotlin.math.abs(x - 186)).coerceAtLeast(0)
+                    x in 220..242 -> (24 - kotlin.math.abs(x - 231)).coerceAtLeast(0)
+                    x in 266..286 -> (15 - kotlin.math.abs(x - 276)).coerceAtLeast(0)
+                    x in 308..330 -> (22 - kotlin.math.abs(x - 319)).coerceAtLeast(0)
+                    else -> 0
+                }
+                val topBladeY = if (x > 356) 82 + ((x - 356) * 20 / 28) else 82 + cutDepth
+                val botBladeY = if (x > 356) 132 - ((x - 356) * 20 / 28) else 132
+                val inBlade = x in 136..382 && y in topBladeY..botBladeY
+                if (inBow || inBlade) {
+                    px[y * w + x] = keyColor
+                }
+            }
+        }
+        bmp.setPixels(px, 0, w, 0, 0, w, h)
+
+        val extracted = com.example.engine.KeyPhotoAnalyzer.analyzeKeyPhoto(bmp, sc1)
+        assertTrue("Expected KeyPhotoAnalyzer to detect synthetic key", extracted.detected)
+        assertTrue("Expected extracted custom contour points", extracted.customContourMm.size >= 16)
+        assertTrue("Expected detected pin count in 3..8", extracted.pinCount in 3..8)
+
+        val photoRecord = KeyRecord(
+            id = 21L,
+            name = "Photo Extracted Key",
+            category = KeyCategory.HOME,
+            keyStandardId = sc1.id,
+            bittingCode = "35241",
+            bladeLengthMm = extracted.bladeLengthMm,
+            bladeWidthMm = extracted.bladeWidthMm,
+            bladeThicknessMm = 2.0f,
+            pinCount = extracted.pinCount,
+            depthsMm = extracted.depthsMm,
+            spacingsMm = extracted.spacingsMm,
+            isDoubleSided = extracted.isDoubleSided,
+            flatWidthsMm = extracted.flatWidthsMm,
+            leftSlopesDeg = extracted.leftSlopesDeg,
+            rightSlopesDeg = extracted.rightSlopesDeg,
+            tipStyle = extracted.tipStyle,
+            tipLengthMm = extracted.tipLengthMm,
+            bowScale = extracted.bowScale,
+            customContourMm = extracted.customContourMm,
+            useExactPhotoContour = true
+        )
+        val mesh = com.example.export.StlMeshGenerator.generateMesh(photoRecord)
+        assertTrue("Expected watertight 3D STL triangles from exact photo contour", mesh.triangles.size > 100)
+    }
+
+    @Test
     fun firstLaunchPinSetupAndNavigationCuj_worksEndToEnd() {
         composeRule.waitForIdle()
 

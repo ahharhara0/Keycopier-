@@ -175,4 +175,38 @@ class KeyEngineAndExportTest {
         assertTrue(SvgTemplateGenerator.generateSvg(record).contains("<svg"))
         assertTrue(DxfTemplateGenerator.generateDxf(record).endsWith("EOF\n"))
     }
+
+    @Test
+    fun tipStylesBowScaleAndCustomToothSlopes_generateValidStlAndSvg() {
+        val sc1 = KeyStandards.getById("SC1")
+        val depths = listOf(1.2f, 2.4f, 0.8f, 3.0f, 1.8f)
+        val spacings = KeyStandards.defaultSpacings(sc1, 5)
+        com.example.domain.model.KeyTipStyle.entries.forEach { tipStyle ->
+            val record = KeyRecord(
+                id = 12L,
+                name = "Tip_${tipStyle.name}",
+                category = KeyCategory.HOME,
+                keyStandardId = "SC1",
+                bittingCode = "36285",
+                bladeLengthMm = 30.0f,
+                bladeWidthMm = 9.0f,
+                bladeThicknessMm = 2.2f,
+                pinCount = 5,
+                depthsMm = depths,
+                spacingsMm = spacings,
+                flatWidthsMm = listOf(0.5f, 1.4f, 0.8f, 2.0f, 1.1f),
+                leftSlopesDeg = listOf(30f, 65f, 45f, 75f, 35f),
+                rightSlopesDeg = listOf(70f, 32f, 50f, 30f, 60f),
+                tipStyle = tipStyle,
+                tipLengthMm = 3.2f,
+                tipOffsetMm = 0.4f,
+                bowScale = 1.25f
+            )
+            val poly = KeyPolygonBuilder.buildFromRecord(record)
+            assertTrue(poly.outerContour.size > 20)
+            val mesh = StlMeshGenerator.generateMesh(record)
+            assertTrue("Expected non-empty STL for $tipStyle", mesh.triangles.size > 80)
+            assertTrue(SvgTemplateGenerator.generateSvg(record).contains("<svg"))
+        }
+    }
 }

@@ -90,6 +90,15 @@ data class KeyStandardSpec(
 }
 
 @Serializable
+enum class KeyTipStyle(val labelEn: String, val labelAr: String) {
+    STANDARD_TAPER("Standard", "قياسي"),
+    SHARP_POINT("Sharp Point", "مدبب حاد"),
+    CHISEL_FLAT("Chisel Flat", "مشطوف"),
+    ROUNDED("Rounded", "دائري"),
+    SLANT_TOP("Slant Top", "مائل علوي")
+}
+
+@Serializable
 data class KeyRecord(
     val id: Long = 0L,
     val name: String,
@@ -103,6 +112,15 @@ data class KeyRecord(
     val depthsMm: List<Float>,
     val spacingsMm: List<Float>,
     val isDoubleSided: Boolean = false,
+    val flatWidthsMm: List<Float> = emptyList(),
+    val leftSlopesDeg: List<Float> = emptyList(),
+    val rightSlopesDeg: List<Float> = emptyList(),
+    val tipStyle: KeyTipStyle = KeyTipStyle.STANDARD_TAPER,
+    val tipLengthMm: Float = 2.6f,
+    val tipOffsetMm: Float = 0f,
+    val bowScale: Float = 1.0f,
+    val customContourMm: List<Point2D> = emptyList(),
+    val useExactPhotoContour: Boolean = false,
     val notes: String = "",
     val tags: String = "",
     val isFavorite: Boolean = false,

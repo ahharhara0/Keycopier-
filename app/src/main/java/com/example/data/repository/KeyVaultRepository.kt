@@ -114,6 +114,15 @@ class KeyVaultRepository(
     private fun KeyRecordEntity.toDomain(): KeyRecord {
         val depths = runCatching { json.decodeFromString<List<Float>>(depthsJson) }.getOrDefault(emptyList())
         val spacings = runCatching { json.decodeFromString<List<Float>>(spacingsJson) }.getOrDefault(emptyList())
+        val flatWidths = runCatching { json.decodeFromString<List<Float>>(flatWidthsJson) }.getOrDefault(emptyList())
+        val leftSlopes = runCatching { json.decodeFromString<List<Float>>(leftSlopesJson) }.getOrDefault(emptyList())
+        val rightSlopes = runCatching { json.decodeFromString<List<Float>>(rightSlopesJson) }.getOrDefault(emptyList())
+        val customContour = runCatching {
+            json.decodeFromString<List<com.example.domain.model.Point2D>>(customContourJson)
+        }.getOrDefault(emptyList())
+        val parsedTipStyle = runCatching {
+            com.example.domain.model.KeyTipStyle.valueOf(tipStyle)
+        }.getOrDefault(com.example.domain.model.KeyTipStyle.STANDARD_TAPER)
         val cat = runCatching { KeyCategory.valueOf(category) }.getOrDefault(KeyCategory.OTHER)
         return KeyRecord(
             id = id,
@@ -128,6 +137,15 @@ class KeyVaultRepository(
             depthsMm = depths,
             spacingsMm = spacings,
             isDoubleSided = isDoubleSided,
+            flatWidthsMm = flatWidths,
+            leftSlopesDeg = leftSlopes,
+            rightSlopesDeg = rightSlopes,
+            tipStyle = parsedTipStyle,
+            tipLengthMm = tipLengthMm,
+            tipOffsetMm = tipOffsetMm,
+            bowScale = bowScale,
+            customContourMm = customContour,
+            useExactPhotoContour = useExactPhotoContour,
             notes = notes,
             tags = tags,
             isFavorite = isFavorite,
@@ -149,6 +167,15 @@ class KeyVaultRepository(
         depthsJson = json.encodeToString(depthsMm),
         spacingsJson = json.encodeToString(spacingsMm),
         isDoubleSided = isDoubleSided,
+        flatWidthsJson = json.encodeToString(flatWidthsMm),
+        leftSlopesJson = json.encodeToString(leftSlopesDeg),
+        rightSlopesJson = json.encodeToString(rightSlopesDeg),
+        tipStyle = tipStyle.name,
+        tipLengthMm = tipLengthMm,
+        tipOffsetMm = tipOffsetMm,
+        bowScale = bowScale,
+        customContourJson = json.encodeToString(customContourMm),
+        useExactPhotoContour = useExactPhotoContour,
         notes = notes,
         tags = tags,
         isFavorite = isFavorite,

@@ -41,13 +41,7 @@ object PdfScaleTemplateGenerator {
     }
 
     private fun generateVectorPdf14Fallback(record: KeyRecord): ByteArray {
-        val polygon = KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        val polygon = KeyPolygonBuilder.buildFromRecord(record)
         val stream = buildString {
             val originX = 42f + polygon.bowLengthMm * MM_TO_PT + 30f
             val baseY = 580f
@@ -93,13 +87,7 @@ object PdfScaleTemplateGenerator {
 
     private fun drawBlueprintPage(canvas: Canvas, record: KeyRecord) {
         val spec = KeyStandards.getById(record.keyStandardId)
-        val polygon = KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        val polygon = KeyPolygonBuilder.buildFromRecord(record)
 
         canvas.drawColor(Color.WHITE)
 

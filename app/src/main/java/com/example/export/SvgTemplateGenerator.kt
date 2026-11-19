@@ -8,13 +8,7 @@ import java.util.Locale
 object SvgTemplateGenerator {
 
     fun generateSvg(record: KeyRecord): String {
-        val polygon = KeyPolygonBuilder.buildKeyPolygon(
-            bladeLengthMm = record.bladeLengthMm,
-            bladeWidthMm = record.bladeWidthMm,
-            spacingsMm = record.spacingsMm,
-            depthsMm = record.depthsMm,
-            isDoubleSided = record.isDoubleSided
-        )
+        val polygon = KeyPolygonBuilder.buildFromRecord(record)
         val spec = KeyStandards.getById(record.keyStandardId)
 
         val margin = 8.0f
