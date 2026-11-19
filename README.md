@@ -62,11 +62,11 @@
 
 ## البناء والتحميل والتثبيت على الأجهزة | Build & Install APK on GitHub
 
-### الطريقة السريعة عبر GitHub Actions (تلقائياً):
+### الطريقة السريعة عبر GitHub Releases / Actions (تلقائياً فور الرفع):
 1. ادفع المشروع إلى مستودعك على GitHub (عبر **Push to GitHub** في AI Studio أو عبر Git).
-2. انتقل إلى تبويب **Actions** في مستودعك على GitHub، ثم اختر سير العمل **`Build KeyCopier Android APK`** (أو اضغط **Run workflow**).
-3. بعد انتهاء البناء والاختبارات، حمّل ملف **`KeyCopier-Pro-APK`** من قسم **Artifacts** في أسفل صفحة التشغيل، وفك الضغط لتثبيت `KeyCopier-Pro-v1.0-debug.apk` على هاتف أندرويد.
-4. لإنشاء إصدار رسمي في صفحة **Releases**، أنشئ Tag مثل `v1.0.0` وسيتم إرفاق ملف APK مباشرة في صفحة Releases.
+2. فور وصول الكود، يبدأ GitHub تلقائياً بتشغيل الاختبارات وبناء ملف **`KeyCopier-Pro-v1.0-release.apk`** (وملف `debug.apk` + `SHA256SUMS.txt`).
+3. انتقل إلى قسم **Releases** في يمين صفحة المستودع (إصدار **`v1.0.0`**) أو من تبويب **Actions -> Artifacts** لتحميل `KeyCopier-Pro-v1.0-release.apk` وتثبيته مباشرة على أجهزة أندرويد.
+4. *(اختياري لتوقيع مستمر بمفتاحك الدائم)*: يمكنك إضافة الأسرار `KEYSTORE_BASE64` و `STORE_PASSWORD` و `KEY_PASSWORD` في **GitHub Repository Secrets**، وفي حال عدم إضافتها سيُنشئ سير العمل مفتاح توقيع Release جاهزاً تلقائياً عند البناء.
 
 ### البناء محلياً | Local CLI Build
 

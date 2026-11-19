@@ -1,19 +1,29 @@
-name: Build KeyCopier Android APK
+name: Build & Release KeyCopier Pro APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ '**' ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ '**' ]
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: keycopier-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-apk:
-    name: Test & Build Installable APK
+  build-and-release:
+    name: Test, Build Release APK & Publish Tag Release
     runs-on: ubuntu-latest
 
     steps:
@@ -29,18 +39,45 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Prepare signing keystore & environment
+      - name: Prepare signing keystores & environment
+        shell: bash
+        env:
+          SECRET_KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          SECRET_STORE_PASS: ${{ secrets.STORE_PASSWORD }}
+          SECRET_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
         run: |
+          set -euo pipefail
+
           if [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
+            tr -d '[:space:]' < debug.keystore.base64 | base64 -d > debug.keystore
           else
-            keytool -genkeypair -v -keystore debug.keystore \
+            keytool -genkeypair -noprompt -v -keystore debug.keystore \
               -storepass android -alias androiddebugkey -keypass android \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
           fi
+
           if [ ! -f .env ] && [ -f .env.example ]; then
             cp .env.example .env
+          fi
+
+          RELEASE_KS="${RUNNER_TEMP}/my-upload-key.jks"
+          if [ -n "$SECRET_KEYSTORE_B64" ] && [ -n "$SECRET_STORE_PASS" ] && [ -n "$SECRET_KEY_PASS" ]; then
+            printf '%s' "$SECRET_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > "$RELEASE_KS"
+            echo "KEYSTORE_PATH=$RELEASE_KS" >> "$GITHUB_ENV"
+            echo "STORE_PASSWORD=$SECRET_STORE_PASS" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$SECRET_KEY_PASS" >> "$GITHUB_ENV"
+            echo "Using repository upload keystore secrets for release signing."
+          else
+            DEFAULT_PASS="KeyCopierRelease2026"
+            keytool -genkeypair -noprompt -v -keystore "$RELEASE_KS" \
+              -storepass "$DEFAULT_PASS" -alias upload -keypass "$DEFAULT_PASS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=AHMED AMEEN BAN HARHARA,OU=KeyCopier,O=OpenSource,C=YE"
+            echo "KEYSTORE_PATH=$RELEASE_KS" >> "$GITHUB_ENV"
+            echo "STORE_PASSWORD=$DEFAULT_PASS" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$DEFAULT_PASS" >> "$GITHUB_ENV"
+            echo "Generated ephemeral release signing keystore for GitHub Release APK."
           fi
 
       - name: Set up Gradle 9.3.1
@@ -49,37 +86,68 @@ jobs:
           gradle-version: '9.3.1'
 
       - name: Run Unit & Robolectric Tests
-        run: gradle :app:testDebugUnitTest
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest
 
-      - name: Build Signed Debug APK
-        run: gradle :app:assembleDebug
+      - name: Build Signed Release & Debug APKs
+        run: gradle --no-daemon --stacktrace :app:assembleRelease :app:assembleDebug
 
-      - name: Rename APK for Device Installation
+      - name: Package Release Artifacts & Checksums
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p release-artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/KeyCopier-Pro-v1.0-debug.apk
-
-      - name: Build Signed Release APK (if Keystore Secrets configured)
-        if: secrets.KEYSTORE_BASE64 != '' && secrets.STORE_PASSWORD != '' && secrets.KEY_PASSWORD != ''
-        env:
-          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "${KEYSTORE_PATH}"
-          gradle :app:assembleRelease
           cp app/build/outputs/apk/release/app-release.apk release-artifacts/KeyCopier-Pro-v1.0-release.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/KeyCopier-Pro-v1.0-debug.apk
+          (cd release-artifacts && sha256sum *.apk > SHA256SUMS.txt)
+          ls -lh release-artifacts
 
-      - name: Upload Installable APK Artifact
+      - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: KeyCopier-Pro-APK
-          path: release-artifacts/*.apk
+          name: KeyCopier-Pro-v1.0-Release
+          path: release-artifacts/*
           retention-days: 90
 
-      - name: Publish GitHub Release on Tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Resolve Release Tag
+        id: release_meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag_name }}" ]; then
+            echo "tag=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v1.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release & Tag
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          startsWith(github.ref, 'refs/tags/v') ||
+          github.ref == 'refs/heads/main' ||
+          github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: release-artifacts/*.apk
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: KeyCopier Pro ${{ steps.release_meta.outputs.tag }}
+          draft: false
+          prerelease: false
+          make_latest: 'true'
           generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release-artifacts/KeyCopier-Pro-v1.0-release.apk
+            release-artifacts/KeyCopier-Pro-v1.0-debug.apk
+            release-artifacts/SHA256SUMS.txt
+          body: |
+            ## KeyCopier Pro (${{ steps.release_meta.outputs.tag }}) — Ready-to-Install Android Release
+
+            - **Direct Install APK:** Download **`KeyCopier-Pro-v1.0-release.apk`** and install directly on Android 7.0+ (API 24+).
+            - **100% Offline-First & Zero-Network:** No `INTERNET` permission; all keys, photos, and backups stay AES-256 encrypted locally.
+            - **Integrity Verification:** Checksums provided in `SHA256SUMS.txt`.
+
+            ---
+            **Developer & Owner:** أحمد أمين بن هرهرة (**AHMED AMEEN BAN HARHARA**) — [@ahharhara](https://github.com/ahharhara) • Open Source (MIT License)
