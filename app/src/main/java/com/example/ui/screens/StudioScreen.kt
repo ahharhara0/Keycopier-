@@ -29,17 +29,23 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Button
@@ -57,6 +63,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -93,6 +100,7 @@ import com.example.ui.components.FrameZoomCompactBar
 import com.example.ui.components.Key3DPreviewCanvas
 import com.example.ui.components.LockFrameResizeSection
 import com.example.ui.components.PerspectiveCornerCanvas
+import com.example.ui.components.PhotoRoiCropCanvas
 import com.example.ui.components.ScreenRulerCanvas
 import com.example.ui.components.TipCustomizationSection
 import com.example.ui.theme.SecondaryTeal
@@ -107,13 +115,15 @@ fun StudioScreen(
     viewModel: StudioViewModel,
     snackbarHostState: SnackbarHostState,
     onSavedToVault: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenCatalog: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showSaveSheet by remember { mutableStateOf(false) }
     var showStandardMenu by remember { mutableStateOf(false) }
     var showCardRectifierSection by remember { mutableStateOf(false) }
+    var showRoiCropEditor by remember { mutableStateOf(false) }
     var autoRotate3D by remember { mutableStateOf(true) }
     var wireframe3D by remember { mutableStateOf(false) }
     var bittingEditText by remember(state.bittingResult.bittingCode) {
@@ -233,6 +243,15 @@ fun StudioScreen(
                 label = { Text(stringResource(R.string.studio_longitudinal_btn)) },
                 modifier = Modifier.testTag("studio_open_longitudinal_button")
             )
+            if (onOpenCatalog != null) {
+                FilterChip(
+                    selected = false,
+                    onClick = onOpenCatalog,
+                    leadingIcon = { Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    label = { Text(stringResource(R.string.studio_catalog_btn)) },
+                    modifier = Modifier.testTag("studio_open_catalog_button")
+                )
+            }
         }
 
         // Live Bitting, Standard & Blade Sides (Single vs Double-Sided) Bar
@@ -436,6 +455,98 @@ fun StudioScreen(
                                         .clip(RoundedCornerShape(14.dp))
                                 )
 
+                                // Photo ROI Crop & Shadow/Orientation Fine-Tuning Row
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    FilterChip(
+                                        selected = showRoiCropEditor,
+                                        onClick = { showRoiCropEditor = !showRoiCropEditor },
+                                        leadingIcon = { Icon(Icons.Default.Crop, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                        label = { Text(stringResource(R.string.studio_photo_roi_crop)) }
+                                    )
+                                    FilterChip(
+                                        selected = state.flipPhotoH,
+                                        onClick = { viewModel.toggleFlipPhotoH() },
+                                        leadingIcon = { Icon(Icons.Default.Flip, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                        label = { Text(stringResource(R.string.studio_photo_flip_h)) }
+                                    )
+                                    FilterChip(
+                                        selected = state.flipPhotoV,
+                                        onClick = { viewModel.toggleFlipPhotoV() },
+                                        leadingIcon = { Icon(Icons.Default.SwapVert, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                        label = { Text(stringResource(R.string.studio_photo_flip_v)) }
+                                    )
+                                }
+
+                                if (showRoiCropEditor) {
+                                    Text(
+                                        text = stringResource(R.string.studio_photo_roi_hint),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(220.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                    ) {
+                                        PhotoRoiCropCanvas(
+                                            bitmap = state.sourceBitmap,
+                                            cropRect = state.photoCropRect,
+                                            onCropRectChanged = { viewModel.updatePhotoCropRect(it) }
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { viewModel.resetPhotoCropRect() },
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Text(stringResource(R.string.studio_reset_corners))
+                                        }
+                                        Button(
+                                            onClick = {
+                                                showRoiCropEditor = false
+                                                viewModel.analyzePhotoToKeyAnd3D()
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Text(stringResource(R.string.studio_photo_reanalyze))
+                                        }
+                                    }
+                                }
+
+                                // Shadow / Glare Sensitivity Slider
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.studio_photo_shadow_sens),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "${(state.shadowSensitivity * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = SecondaryTeal
+                                    )
+                                }
+                                Slider(
+                                    value = state.shadowSensitivity,
+                                    onValueChange = { viewModel.setShadowSensitivity(it) },
+                                    onValueChangeFinished = { viewModel.analyzePhotoToKeyAnd3D() },
+                                    valueRange = -0.5f..0.5f
+                                )
+
                                 // 100% Exact Photo Contour Toggle
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -462,6 +573,42 @@ fun StudioScreen(
                                     )
                                 }
 
+                                // Direct Actions: Edit Teeth (CAD) | Screen Match | Save Key | 3D Model
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.setMode(StudioMode.BITTING_CAD) },
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("studio_photo_edit_cad_btn")
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            stringResource(R.string.studio_photo_edit_cad),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { viewModel.setMode(StudioMode.PREVIEW_3D) },
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("studio_photo_view_3d_btn")
+                                    ) {
+                                        Icon(Icons.Default.ViewInAr, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            stringResource(R.string.studio_photo_view_3d),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -471,7 +618,7 @@ fun StudioScreen(
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(4.dp))
                                         Text(
                                             stringResource(R.string.studio_photo_reanalyze),
@@ -479,17 +626,17 @@ fun StudioScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                    Button(
-                                        onClick = { viewModel.setMode(StudioMode.PREVIEW_3D) },
+                                    FilledTonalButton(
+                                        onClick = { showSaveSheet = true },
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier
-                                            .weight(1.1f)
-                                            .testTag("studio_photo_view_3d_btn")
+                                            .weight(1f)
+                                            .testTag("studio_photo_save_direct_btn")
                                     ) {
-                                        Icon(Icons.Default.ViewInAr, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(6.dp))
+                                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
                                         Text(
-                                            stringResource(R.string.studio_photo_view_3d),
+                                            stringResource(R.string.studio_save_key),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -654,19 +801,34 @@ fun StudioScreen(
                         tipStyle = state.tipStyle,
                         tipLengthMm = state.tipLengthMm,
                         tipOffsetMm = state.tipOffsetMm,
+                        bowStyle = state.bowStyle,
                         bowScale = state.bowScale,
                         frameZoom = state.frameZoom,
                         customContourMm = state.customContourMm,
                         useExactPhotoContour = state.useExactPhotoContour,
+                        highContrastGlassMode = state.highContrastGlassMode,
                         onSelectPin = { idx -> viewModel.selectPin(idx) },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-                FrameZoomCompactBar(
-                    frameZoom = state.frameZoom,
-                    onZoomChange = { viewModel.updateFrameZoom(it) },
-                    onReset = { viewModel.resetFrameZoom() }
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FrameZoomCompactBar(
+                        frameZoom = state.frameZoom,
+                        onZoomChange = { viewModel.updateFrameZoom(it) },
+                        onReset = { viewModel.resetFrameZoom() },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = state.highContrastGlassMode,
+                        onClick = { viewModel.toggleHighContrastGlassMode() },
+                        leadingIcon = { Icon(Icons.Default.BrightnessHigh, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        label = { Text(stringResource(R.string.studio_glass_mode_btn)) }
+                    )
+                }
             }
 
             StudioMode.BITTING_CAD -> {
@@ -689,6 +851,7 @@ fun StudioScreen(
                         tipStyle = state.tipStyle,
                         tipLengthMm = state.tipLengthMm,
                         tipOffsetMm = state.tipOffsetMm,
+                        bowStyle = state.bowStyle,
                         bowScale = state.bowScale,
                         frameZoom = state.frameZoom,
                         customContourMm = state.customContourMm,
@@ -840,7 +1003,8 @@ fun StudioScreen(
         ) {
             LockFrameResizeSection(
                 state = state,
-                viewModel = viewModel
+                viewModel = viewModel,
+                settings = settings
             )
             TipCustomizationSection(
                 state = state,
@@ -928,7 +1092,8 @@ fun StudioScreen(
             state = state,
             settings = settings,
             viewModel = viewModel,
-            onDismiss = { viewModel.setShowLongitudinalPad(false) }
+            onDismiss = { viewModel.setShowLongitudinalPad(false) },
+            onOpenCatalog = onOpenCatalog
         )
     }
 }

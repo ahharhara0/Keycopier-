@@ -54,6 +54,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.R
 import com.example.domain.model.AppLanguage
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.KeyCatalogScreen
 import com.example.ui.screens.LibraryScreen
 import com.example.ui.screens.PinLockScreen
 import com.example.ui.screens.ReportsScreen
@@ -70,6 +71,7 @@ sealed interface AppRoute {
     @Serializable data object Studio : AppRoute
     @Serializable data object Reports : AppRoute
     @Serializable data object Settings : AppRoute
+    @Serializable data object Catalog : AppRoute
 }
 
 private data class NavTab(
@@ -240,6 +242,7 @@ private fun MainShell(
                                 studioViewModel.startNewKey(mode)
                                 navigateToTab(AppRoute.Studio)
                             },
+                            onOpenCatalog = { navController.navigate(AppRoute.Catalog) },
                             onOpenLibrary = { navigateToTab(AppRoute.Library) },
                             onOpenReports = { navigateToTab(AppRoute.Reports) },
                             onSelectKey = { record ->
@@ -275,7 +278,23 @@ private fun MainShell(
                             settings = settings,
                             viewModel = studioViewModel,
                             snackbarHostState = snackbarHostState,
+                            onOpenCatalog = { navController.navigate(AppRoute.Catalog) },
                             onSavedToVault = { vaultViewModel.refreshStorageStats() }
+                        )
+                    }
+                    composable<AppRoute.Catalog> {
+                        KeyCatalogScreen(
+                            settings = settings,
+                            onSelectPreset = { preset, openPad ->
+                                studioViewModel.applyCatalogPreset(
+                                    preset = preset,
+                                    isArabic = settings.language == AppLanguage.ARABIC,
+                                    openLongitudinalPad = openPad
+                                )
+                                navController.popBackStack()
+                                navigateToTab(AppRoute.Studio)
+                            },
+                            onBack = { navController.popBackStack() }
                         )
                     }
                     composable<AppRoute.Reports> {

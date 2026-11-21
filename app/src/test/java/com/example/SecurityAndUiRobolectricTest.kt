@@ -145,6 +145,69 @@ class SecurityAndUiRobolectricTest {
     }
 
     @Test
+    fun photoAnalyzer_handlesTiltedShadowedAndGlareSpottedKeyPhoto() {
+        val sc1 = KeyStandards.getById("SC1")
+        val w = 460
+        val h = 250
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        val px = IntArray(w * h)
+        val theta = Math.toRadians(6.0)
+        val cosT = kotlin.math.cos(theta)
+        val sinT = kotlin.math.sin(theta)
+        val cx = w * 0.5
+        val cy = h * 0.5
+
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                // Uneven lighting gradient desk background
+                val bgShade = (210 + (x - w * 0.5f) * 0.08f - (y - h * 0.5f) * 0.06f).toInt().coerceIn(170, 245)
+                var col = android.graphics.Color.rgb(bgShade, bgShade - 4, bgShade - 10)
+
+                // Soft cast shadow shifted down-right from key
+                val sx = (x - 6 - cx) * cosT + (y - 9 - cy) * sinT + cx
+                val sy = -(x - 6 - cx) * sinT + (y - 9 - cy) * cosT + cy
+                val inShadowBlade = sx in 140.0..388.0 && sy in 96.0..150.0
+                if (inShadowBlade) {
+                    col = android.graphics.Color.rgb(bgShade - 26, bgShade - 28, bgShade - 32)
+                }
+
+                // True rotated dark-brass/steel key silhouette with 4 cuts + interior bright flash glare holes
+                val kx = (x - cx) * cosT + (y - cy) * sinT + cx
+                val ky = -(x - cx) * sinT + (y - cy) * cosT + cy
+                val inBow = kx in 48.0..140.0 && ky in 68.0..176.0
+                val kxi = kx.toInt()
+                val cutDepth = when {
+                    kxi in 182..202 -> (16 - kotlin.math.abs(kxi - 192)).coerceAtLeast(0)
+                    kxi in 226..248 -> (23 - kotlin.math.abs(kxi - 237)).coerceAtLeast(0)
+                    kxi in 272..292 -> (14 - kotlin.math.abs(kxi - 282)).coerceAtLeast(0)
+                    kxi in 314..336 -> (21 - kotlin.math.abs(kxi - 325)).coerceAtLeast(0)
+                    else -> 0
+                }
+                val topBladeY = if (kxi > 362) 92.0 + ((kxi - 362) * 18.0 / 26.0) else 92.0 + cutDepth
+                val botBladeY = if (kxi > 362) 142.0 - ((kxi - 362) * 18.0 / 26.0) else 142.0
+                val inBlade = kx in 141.0..388.0 && ky in topBladeY..botBladeY
+                if (inBow || inBlade) {
+                    val isGlareSpot = kotlin.math.hypot(kx - 255.0, ky - 122.0) < 4.5 ||
+                        kotlin.math.hypot(kx - 165.0, ky - 120.0) < 4.0
+                    col = if (isGlareSpot) {
+                        android.graphics.Color.rgb(235, 238, 242) // bright metallic flash glare
+                    } else {
+                        android.graphics.Color.rgb(52, 56, 64)
+                    }
+                }
+                px[y * w + x] = col
+            }
+        }
+        bmp.setPixels(px, 0, w, 0, 0, w, h)
+
+        val extracted = com.example.engine.KeyPhotoAnalyzer.analyzeKeyPhoto(bmp, sc1)
+        assertTrue("Expected rotated/shadowed/glare key to be detected", extracted.detected)
+        assertEquals(4, extracted.pinCount)
+        assertTrue("Expected confident detection >= 75%", extracted.confidencePercent >= 75)
+        assertTrue("Expected healed contour >= 20 points", extracted.customContourMm.size >= 20)
+    }
+
+    @Test
     fun firstLaunchPinSetupAndNavigationCuj_worksEndToEnd() {
         composeRule.waitForIdle()
 
@@ -166,6 +229,21 @@ class SecurityAndUiRobolectricTest {
 
         // Unlocked Home Screen should show bottom nav & quick launch button
         composeRule.onNodeWithTag("home_launch_studio_btn").assertIsDisplayed()
+
+        // Open 100-Key Catalog, filter Automotive, select #1 -> loads Longitudinal Glass Match Pad
+        composeRule.onNodeWithTag("home_open_catalog_btn").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("catalog_search_input").assertIsDisplayed()
+        composeRule.onNodeWithTag("catalog_cat_automotive").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("catalog_cat_all").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("catalog_item_1").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("longitudinal_pad_canvas").assertIsDisplayed()
+        composeRule.onNodeWithTag("longitudinal_glass_mode_chip").performClick()
+        composeRule.onNodeWithTag("longitudinal_done_button").performClick()
+        composeRule.waitForIdle()
 
         // Navigate across tabs: Studio -> Longitudinal Pad -> Library -> Reports -> Settings
         composeRule.onNodeWithTag("nav_studio").performClick()

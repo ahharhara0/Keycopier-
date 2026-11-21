@@ -209,4 +209,49 @@ class KeyEngineAndExportTest {
             assertTrue(SvgTemplateGenerator.generateSvg(record).contains("<svg"))
         }
     }
+
+    @Test
+    fun keyBlankCatalog_contains1000RealPresetsAndExportsValidStlForAll7BowStyles() {
+        val all = com.example.domain.model.KeyBlankCatalog.ALL_1000
+        assertEquals(1000, all.size)
+        assertEquals(1000, all.map { it.id }.toSet().size)
+        assertEquals((1..1000).toList(), all.map { it.number })
+        assertTrue(all.all { it.bittingCode.length == it.pinCount })
+        assertTrue(all.all { it.depthsMm.size == it.pinCount && it.spacingsMm.size == it.pinCount })
+
+        assertEquals(
+            250,
+            com.example.domain.model.KeyBlankCatalog.filter(com.example.domain.model.CatalogCategory.RESIDENTIAL).size
+        )
+        assertEquals(
+            250,
+            com.example.domain.model.KeyBlankCatalog.filter(com.example.domain.model.CatalogCategory.AUTOMOTIVE).size
+        )
+        assertEquals(
+            250,
+            com.example.domain.model.KeyBlankCatalog.filter(com.example.domain.model.CatalogCategory.PADLOCK_CABINET).size
+        )
+        assertEquals(
+            250,
+            com.example.domain.model.KeyBlankCatalog.filter(com.example.domain.model.CatalogCategory.SPECIALTY_HIGH_SEC).size
+        )
+
+        val uncutBlanks = com.example.domain.model.KeyBlankCatalog.filter(uncutOnly = true)
+        assertEquals(248, uncutBlanks.size)
+        assertTrue(uncutBlanks.all { p -> p.depthsMm.all { it == 0f } })
+
+        val sc1Matches = com.example.domain.model.KeyBlankCatalog.filter(query = "SC1-1145")
+        assertEquals(5, sc1Matches.size)
+
+        com.example.domain.model.KeyBowStyle.entries.forEach { style ->
+            val preset = all.firstOrNull { it.bowStyle == style }
+            assertNotNull("Expected catalog preset with bowStyle=$style", preset)
+            val rec = preset!!.toPreviewRecord(isArabic = false)
+            val poly = KeyPolygonBuilder.buildFromRecord(rec)
+            assertTrue("Expected non-empty outer contour for $style", poly.outerContour.size >= 16)
+            assertEquals(16, poly.bowHoleContour.size)
+            val mesh = StlMeshGenerator.generateMesh(rec)
+            assertTrue("Expected valid 3D STL triangles for $style", mesh.triangles.size > 80)
+        }
+    }
 }

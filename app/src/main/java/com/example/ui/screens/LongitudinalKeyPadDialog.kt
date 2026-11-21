@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.app.Activity
+import android.view.WindowManager
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +22,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
@@ -32,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,11 +66,31 @@ fun LongitudinalKeyPadDialog(
     state: StudioUiState,
     settings: AppSettings,
     viewModel: StudioViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenCatalog: (() -> Unit)? = null
 ) {
     var activeDockTab by remember { mutableIntStateOf(0) } // 0 = Teeth Arrows D-Pad, 1 = Frame & Tip
     val activeIdx = state.selectedPinIndex.coerceIn(0, (state.pinCount - 1).coerceAtLeast(0))
     val bittingDigits = state.bittingResult.pins.map { it.codeDigit }
+    val context = LocalContext.current
+
+    DisposableEffect(state.highContrastGlassMode, context) {
+        val window = (context as? Activity)?.window
+        val origBrightness = window?.attributes?.screenBrightness
+            ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        if (window != null && state.highContrastGlassMode) {
+            val attrs = window.attributes
+            attrs.screenBrightness = 1.0f
+            window.attributes = attrs
+        }
+        onDispose {
+            if (window != null && state.highContrastGlassMode) {
+                val attrs = window.attributes
+                attrs.screenBrightness = origBrightness
+                window.attributes = attrs
+            }
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -164,6 +190,29 @@ fun LongitudinalKeyPadDialog(
                                 },
                                 label = { Text(stringResource(R.string.studio_tab_frame_tip)) }
                             )
+                            FilterChip(
+                                selected = state.highContrastGlassMode,
+                                onClick = { viewModel.toggleHighContrastGlassMode() },
+                                leadingIcon = {
+                                    Icon(Icons.Default.BrightnessHigh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                },
+                                label = { Text(stringResource(R.string.studio_glass_mode_btn)) },
+                                modifier = Modifier.testTag("longitudinal_glass_mode_chip")
+                            )
+                            if (onOpenCatalog != null) {
+                                FilterChip(
+                                    selected = false,
+                                    onClick = {
+                                        onDismiss()
+                                        onOpenCatalog()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    },
+                                    label = { Text(stringResource(R.string.studio_catalog_btn)) },
+                                    modifier = Modifier.testTag("longitudinal_catalog_chip")
+                                )
+                            }
                         }
                     }
                 }
@@ -189,10 +238,12 @@ fun LongitudinalKeyPadDialog(
                         tipStyle = state.tipStyle,
                         tipLengthMm = state.tipLengthMm,
                         tipOffsetMm = state.tipOffsetMm,
+                        bowStyle = state.bowStyle,
                         bowScale = state.bowScale,
                         frameZoom = state.frameZoom,
                         customContourMm = state.customContourMm,
                         useExactPhotoContour = state.useExactPhotoContour,
+                        highContrastGlassMode = state.highContrastGlassMode,
                         onSelectPin = { idx -> viewModel.selectPin(idx) },
                         modifier = Modifier
                             .fillMaxSize()
@@ -256,7 +307,8 @@ fun LongitudinalKeyPadDialog(
                         } else {
                             LockFrameResizeSection(
                                 state = state,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                settings = settings
                             )
                             TipCustomizationSection(
                                 state = state,

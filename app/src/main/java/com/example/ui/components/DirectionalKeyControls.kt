@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.model.AppLanguage
 import com.example.domain.model.AppSettings
+import com.example.domain.model.KeyBowStyle
 import com.example.domain.model.KeyTipStyle
 import com.example.engine.BittingCalculator
 import com.example.ui.StudioUiState
@@ -393,6 +394,56 @@ fun DirectionalToothControlPad(
             )
         }
 
+        // Quick Datum & Tooth Alignment Helpers (Copy Prev | 0 Flat | Shift All <-/->)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            OutlinedButton(
+                onClick = { viewModel.copyPreviousPinDepth(activeIdx) },
+                enabled = activeIdx > 0,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .height(40.dp)
+                    .testTag("${tagPrefix}_copy_prev_button")
+            ) {
+                Text(stringResource(R.string.studio_copy_prev), style = MaterialTheme.typography.labelSmall)
+            }
+            OutlinedButton(
+                onClick = { viewModel.setPinLevelCode(activeIdx, 0) },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .height(40.dp)
+                    .testTag("${tagPrefix}_zero_flat_button")
+            ) {
+                Text(stringResource(R.string.studio_flat_zero), style = MaterialTheme.typography.labelSmall)
+            }
+            OutlinedButton(
+                onClick = { viewModel.nudgeAllPinsX(-step) },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .height(40.dp)
+                    .testTag("${tagPrefix}_shift_all_left")
+            ) {
+                Text(stringResource(R.string.studio_shift_all_left), style = MaterialTheme.typography.labelSmall)
+            }
+            OutlinedButton(
+                onClick = { viewModel.nudgeAllPinsX(+step) },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .height(40.dp)
+                    .testTag("${tagPrefix}_shift_all_right")
+            ) {
+                Text(stringResource(R.string.studio_shift_all_right), style = MaterialTheme.typography.labelSmall)
+            }
+        }
+
         // 0 (Flat) .. 9 Quick Cut Levels
         QuickCutLevelBar(
             selectedLevel = nearestLevel,
@@ -405,13 +456,14 @@ fun DirectionalToothControlPad(
 
 /**
  * Lock Frame Resize & Scale Card:
- * Adjusts on-screen zoom, bow/head scale, blade length, blade width, and blade thickness.
+ * Adjusts on-screen zoom, bow/head style & scale, blade length, blade width, and blade thickness.
  */
 @Composable
 fun LockFrameResizeSection(
     state: StudioUiState,
     viewModel: StudioViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    settings: AppSettings = AppSettings()
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -426,6 +478,29 @@ fun LockFrameResizeSection(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
+
+            // Bow / Head Geometry Style Selector (7 styles)
+            Text(
+                text = stringResource(R.string.studio_bow_style_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                KeyBowStyle.entries.forEach { style ->
+                    val label = if (settings.language == AppLanguage.ARABIC) style.labelAr else style.labelEn
+                    FilterChip(
+                        selected = state.bowStyle == style,
+                        onClick = { viewModel.updateBowStyle(style) },
+                        label = { Text(label) },
+                        modifier = Modifier.testTag("studio_bow_style_${style.name.lowercase()}")
+                    )
+                }
+            }
 
             // On-screen Frame Zoom Control
             Row(

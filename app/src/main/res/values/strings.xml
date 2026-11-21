@@ -42,6 +42,8 @@
     <string name="home_action_screen_ruler">Screen Ruler</string>
     <string name="home_action_library">Key Library</string>
     <string name="home_action_templates">Export Center</string>
+    <string name="home_action_catalog_100">1,000 Key Shapes Catalog</string>
+    <string name="home_action_catalog_desc">Pick from 1,000 real OEM blanks &amp; bitting profiles before placing on screen</string>
     <string name="home_recent_keys">Recent Keys</string>
     <string name="home_empty_recent">No keys decoded yet. Start in Key Studio using Photo Calibration or the Screen Ruler.</string>
     <string name="home_start_decoding">Launch Key Studio</string>
@@ -143,6 +145,25 @@
     <string name="studio_photo_card_section">Optional ISO ID-1 Card Rectification</string>
     <string name="studio_tab_dpad">Teeth Arrows</string>
     <string name="studio_tab_frame_tip">Frame &amp; Tip</string>
+    <string name="studio_catalog_btn">1,000 Keys</string>
+    <string name="studio_glass_mode_btn">Glass Contrast</string>
+    <string name="studio_bow_style_title">Key Head / Bow Shape</string>
+    <string name="studio_copy_prev">Copy Prev</string>
+    <string name="studio_shift_all_left">Shift All ←</string>
+    <string name="studio_shift_all_right">Shift All →</string>
+    <string name="studio_photo_roi_crop">Crop Key Area</string>
+    <string name="studio_photo_roi_hint">Drag the 4 cyan handles closely around your key to exclude cluttered desk backgrounds.</string>
+    <string name="studio_photo_flip_h">Flip H</string>
+    <string name="studio_photo_flip_v">Flip V</string>
+    <string name="studio_photo_shadow_sens">Shadow / Glare Sensitivity</string>
+    <string name="studio_photo_edit_cad">Edit Teeth (CAD)</string>
+
+    <!-- 1,000-Key Catalog -->
+    <string name="catalog_title">1,000 Real Key Blank Profiles</string>
+    <string name="catalog_subtitle">Showing %1$d real shapes • Tap any key to open 1:1 Screen Match</string>
+    <string name="catalog_search_hint">Search 1,000 keys (SC1, KW1, TOY43, Yale, Abus, Blank…)</string>
+    <string name="catalog_match_on_screen">Open &amp; Match on Screen</string>
+    <string name="catalog_filter_blanks">Uncut Blanks</string>
 
     <!-- Templates & Reports -->
     <string name="reports_title">Templates &amp; Fabrication</string>

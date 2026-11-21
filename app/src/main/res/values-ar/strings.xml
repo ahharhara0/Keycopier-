@@ -42,6 +42,8 @@
     <string name="home_action_screen_ruler">مسطرة الشاشة</string>
     <string name="home_action_library">مكتبة المفاتيح</string>
     <string name="home_action_templates">مركز التصدير</string>
+    <string name="home_action_catalog_100">كتالوج 1000 شكل مفتاح حقيقي</string>
+    <string name="home_action_catalog_desc">اختر من بين 1000 مفتاح ونموذج مصنعي حقيقي قبل التعديل على الشاشة</string>
     <string name="home_recent_keys">أحدث المفاتيح</string>
     <string name="home_empty_recent">لا توجد مفاتيح محفوظة بعد. ابدأ من الاستوديو عبر معايرة الصورة أو مسطرة الشاشة.</string>
     <string name="home_start_decoding">فتح استوديو المفاتيح</string>
@@ -143,6 +145,25 @@
     <string name="studio_photo_card_section">معايرة البطاقة المرجعية ISO ID-1 (اختياري)</string>
     <string name="studio_tab_dpad">أسهم الأسنان</string>
     <string name="studio_tab_frame_tip">الهيكل والمدبب</string>
+    <string name="studio_catalog_btn">1000 مفتاح</string>
+    <string name="studio_glass_mode_btn">وضع الزجاج الساطع</string>
+    <string name="studio_bow_style_title">شكل رأس المفتاح</string>
+    <string name="studio_copy_prev">نسخ السابق</string>
+    <string name="studio_shift_all_left">إزاحة الكل ←</string>
+    <string name="studio_shift_all_right">إزاحة الكل →</string>
+    <string name="studio_photo_roi_crop">تحديد إطار المفتاح</string>
+    <string name="studio_photo_roi_hint">اسحب الزوايا السماوية الأربع حول المفتاح لعزل الخلفية والحصول على أدق قراءة للأسنان.</string>
+    <string name="studio_photo_flip_h">عكس أفقي</string>
+    <string name="studio_photo_flip_v">عكس عمودي</string>
+    <string name="studio_photo_shadow_sens">حساسية الظل واللمعان</string>
+    <string name="studio_photo_edit_cad">تعديل الأسنان</string>
+
+    <!-- 1,000-Key Catalog -->
+    <string name="catalog_title">كتالوج 1000 شكل مفتاح حقيقي</string>
+    <string name="catalog_subtitle">عرض %1$d نموذج • اضغط أي مفتاح لفتحه ومطابقته على الشاشة</string>
+    <string name="catalog_search_hint">ابحث في 1000 مفتاح (SC1، تويوتا، ييل، أبوس، خام…)</string>
+    <string name="catalog_match_on_screen">فتح ومطابقة على الشاشة</string>
+    <string name="catalog_filter_blanks">مفاتيح خام فقط</string>
 
     <!-- Templates & Reports -->
     <string name="reports_title">مركز القوالب والتصنيع</string>

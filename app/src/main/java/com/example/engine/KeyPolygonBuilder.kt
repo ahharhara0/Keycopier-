@@ -39,6 +39,7 @@ object KeyPolygonBuilder {
         tipStyle = record.tipStyle,
         tipLengthMm = record.tipLengthMm,
         tipOffsetMm = record.tipOffsetMm,
+        bowStyle = record.bowStyle,
         bowScale = record.bowScale,
         customContourMm = record.customContourMm,
         useExactPhotoContour = record.useExactPhotoContour
@@ -58,6 +59,7 @@ object KeyPolygonBuilder {
         tipStyle: KeyTipStyle = KeyTipStyle.STANDARD_TAPER,
         tipLengthMm: Float = 2.6f,
         tipOffsetMm: Float = 0f,
+        bowStyle: com.example.domain.model.KeyBowStyle = com.example.domain.model.KeyBowStyle.CLASSIC_OVAL,
         bowScale: Float = 1.0f,
         customContourMm: List<Point2D> = emptyList(),
         useExactPhotoContour: Boolean = false
@@ -72,27 +74,108 @@ object KeyPolygonBuilder {
         }
 
         val sBow = bowScale.coerceIn(0.6f, 1.55f)
-        val bowLength = 24.5f * sBow
-        val bowHeight = 23.0f * sBow
+        val bowLength = when (bowStyle) {
+            com.example.domain.model.KeyBowStyle.AUTO_FOB -> 28.0f * sBow
+            com.example.domain.model.KeyBowStyle.SLIM_PADLOCK -> 18.5f * sBow
+            com.example.domain.model.KeyBowStyle.SQUARE_HEAVY -> 23.0f * sBow
+            else -> 24.5f * sBow
+        }
+        val bowHeight = when (bowStyle) {
+            com.example.domain.model.KeyBowStyle.SLIM_PADLOCK -> 18.0f * sBow
+            com.example.domain.model.KeyBowStyle.AUTO_FOB -> 25.0f * sBow
+            else -> 23.0f * sBow
+        }
         val spineCenterY = bladeWidthMm * 0.5f
 
         val outer = mutableListOf<Point2D>()
 
-        // 1. Start at bottom shoulder stop (0, 0), step into neck & scaled bow
+        // 1. Start at bottom shoulder stop (0, 0), step into neck & styled bow
         outer.add(Point2D(0f, 0f))
         outer.add(Point2D(-0.8f * sBow, 0f))
-        outer.add(Point2D(-1.4f * sBow, -2.2f * sBow))
-        outer.add(Point2D(-4.2f * sBow, -2.2f * sBow))
-        outer.add(Point2D(-7.5f * sBow, spineCenterY - bowHeight * 0.48f))
-        outer.add(Point2D(-15.5f * sBow, spineCenterY - bowHeight * 0.50f))
-        outer.add(Point2D(-21.5f * sBow, spineCenterY - bowHeight * 0.36f))
-        outer.add(Point2D(-bowLength, spineCenterY - 4.2f * sBow))
-        outer.add(Point2D(-bowLength, spineCenterY + 4.2f * sBow))
-        outer.add(Point2D(-21.5f * sBow, spineCenterY + bowHeight * 0.36f))
-        outer.add(Point2D(-15.5f * sBow, spineCenterY + bowHeight * 0.50f))
-        outer.add(Point2D(-7.5f * sBow, spineCenterY + bowHeight * 0.48f))
-        outer.add(Point2D(-4.2f * sBow, bladeWidthMm + 2.2f * sBow))
-        outer.add(Point2D(-1.4f * sBow, bladeWidthMm + 2.2f * sBow))
+        outer.add(Point2D(-1.4f * sBow, -2.0f * sBow))
+        outer.add(Point2D(-4.0f * sBow, -2.0f * sBow))
+
+        val bowBackPoints: List<Point2D> = when (bowStyle) {
+            com.example.domain.model.KeyBowStyle.HEX_SCHLAGE -> listOf(
+                Point2D(-6.2f * sBow, spineCenterY - bowHeight * 0.44f),
+                Point2D(-14.0f * sBow, spineCenterY - bowHeight * 0.50f),
+                Point2D(-21.8f * sBow, spineCenterY - bowHeight * 0.36f),
+                Point2D(-bowLength, spineCenterY - 2.6f * sBow),
+                Point2D(-bowLength, spineCenterY + 2.6f * sBow),
+                Point2D(-21.8f * sBow, spineCenterY + bowHeight * 0.36f),
+                Point2D(-14.0f * sBow, spineCenterY + bowHeight * 0.50f),
+                Point2D(-6.2f * sBow, spineCenterY + bowHeight * 0.44f)
+            )
+            com.example.domain.model.KeyBowStyle.SQUARE_HEAVY -> listOf(
+                Point2D(-5.0f * sBow, spineCenterY - bowHeight * 0.48f),
+                Point2D(-bowLength + 1.5f * sBow, spineCenterY - bowHeight * 0.48f),
+                Point2D(-bowLength, spineCenterY - bowHeight * 0.40f),
+                Point2D(-bowLength, spineCenterY + bowHeight * 0.40f),
+                Point2D(-bowLength + 1.5f * sBow, spineCenterY + bowHeight * 0.48f),
+                Point2D(-5.0f * sBow, spineCenterY + bowHeight * 0.48f)
+            )
+            com.example.domain.model.KeyBowStyle.TULIP_CROWN -> listOf(
+                Point2D(-6.5f * sBow, spineCenterY - bowHeight * 0.42f),
+                Point2D(-11.5f * sBow, spineCenterY - bowHeight * 0.54f),
+                Point2D(-16.5f * sBow, spineCenterY - bowHeight * 0.44f),
+                Point2D(-21.5f * sBow, spineCenterY - bowHeight * 0.48f),
+                Point2D(-bowLength, spineCenterY - 4.0f * sBow),
+                Point2D(-bowLength + 1.5f * sBow, spineCenterY),
+                Point2D(-bowLength, spineCenterY + 4.0f * sBow),
+                Point2D(-21.5f * sBow, spineCenterY + bowHeight * 0.48f),
+                Point2D(-16.5f * sBow, spineCenterY + bowHeight * 0.44f),
+                Point2D(-11.5f * sBow, spineCenterY + bowHeight * 0.54f),
+                Point2D(-6.5f * sBow, spineCenterY + bowHeight * 0.42f)
+            )
+            com.example.domain.model.KeyBowStyle.AUTO_FOB -> listOf(
+                Point2D(-5.5f * sBow, spineCenterY - bowHeight * 0.34f),
+                Point2D(-9.0f * sBow, spineCenterY - bowHeight * 0.48f),
+                Point2D(-23.0f * sBow, spineCenterY - bowHeight * 0.48f),
+                Point2D(-bowLength, spineCenterY - bowHeight * 0.32f),
+                Point2D(-bowLength, spineCenterY + bowHeight * 0.32f),
+                Point2D(-23.0f * sBow, spineCenterY + bowHeight * 0.48f),
+                Point2D(-9.0f * sBow, spineCenterY + bowHeight * 0.48f),
+                Point2D(-5.5f * sBow, spineCenterY + bowHeight * 0.34f)
+            )
+            com.example.domain.model.KeyBowStyle.SLIM_PADLOCK -> listOf(
+                Point2D(-5.2f * sBow, spineCenterY - bowHeight * 0.42f),
+                Point2D(-12.5f * sBow, spineCenterY - bowHeight * 0.46f),
+                Point2D(-bowLength, spineCenterY - 3.6f * sBow),
+                Point2D(-bowLength, spineCenterY + 3.6f * sBow),
+                Point2D(-12.5f * sBow, spineCenterY + bowHeight * 0.46f),
+                Point2D(-5.2f * sBow, spineCenterY + bowHeight * 0.42f)
+            )
+            com.example.domain.model.KeyBowStyle.ROUND_COIN -> {
+                val cx = -13.8f * sBow
+                val r = bowHeight * 0.50f
+                val steps = 11
+                val pts = mutableListOf<Point2D>()
+                for (k in 0..steps) {
+                    val theta = (-PI * 0.44 + (k.toFloat() / steps) * (PI * 0.88)) + PI
+                    pts.add(
+                        Point2D(
+                            x = (cx + cos(theta).toFloat() * r).coerceAtMost(-4.5f * sBow),
+                            y = spineCenterY - sin(theta).toFloat() * r
+                        )
+                    )
+                }
+                pts
+            }
+            com.example.domain.model.KeyBowStyle.CLASSIC_OVAL -> listOf(
+                Point2D(-7.5f * sBow, spineCenterY - bowHeight * 0.48f),
+                Point2D(-15.5f * sBow, spineCenterY - bowHeight * 0.50f),
+                Point2D(-21.5f * sBow, spineCenterY - bowHeight * 0.36f),
+                Point2D(-bowLength, spineCenterY - 4.2f * sBow),
+                Point2D(-bowLength, spineCenterY + 4.2f * sBow),
+                Point2D(-21.5f * sBow, spineCenterY + bowHeight * 0.36f),
+                Point2D(-15.5f * sBow, spineCenterY + bowHeight * 0.50f),
+                Point2D(-7.5f * sBow, spineCenterY + bowHeight * 0.48f)
+            )
+        }
+        outer.addAll(bowBackPoints)
+
+        outer.add(Point2D(-4.0f * sBow, bladeWidthMm + 2.0f * sBow))
+        outer.add(Point2D(-1.4f * sBow, bladeWidthMm + 2.0f * sBow))
         outer.add(Point2D(-0.8f * sBow, bladeWidthMm))
 
         // 2. Top shoulder & uncut lead-in
@@ -256,9 +339,9 @@ object KeyPolygonBuilder {
         }
 
         // 6. Keyring hole inside scaled bow
-        val holeCenterX = -15.2f * sBow
+        val holeCenterX = -(bowLength * 0.56f).coerceIn(4.8f, bowLength - 4.2f)
         val holeCenterY = spineCenterY
-        val holeRadius = (3.1f * sBow).coerceIn(1.6f, 4.8f)
+        val holeRadius = minOf(3.1f * sBow, bowHeight * 0.24f).coerceIn(1.5f, 4.8f)
         val holeContour = buildCircleContour(holeCenterX, holeCenterY, holeRadius)
 
         return KeyPolygon2D(

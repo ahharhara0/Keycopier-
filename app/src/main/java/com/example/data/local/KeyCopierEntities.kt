@@ -25,6 +25,7 @@ data class KeyRecordEntity(
     val tipStyle: String = "STANDARD_TAPER",
     val tipLengthMm: Float = 2.6f,
     val tipOffsetMm: Float = 0f,
+    val bowStyle: String = "CLASSIC_OVAL",
     val bowScale: Float = 1.0f,
     val customContourJson: String = "[]",
     val useExactPhotoContour: Boolean = false,

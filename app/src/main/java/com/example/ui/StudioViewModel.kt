@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.repository.KeyVaultRepository
 import com.example.domain.model.AttachmentType
+import com.example.domain.model.KeyBowStyle
+import com.example.domain.model.KeyCatalogPreset
 import com.example.domain.model.KeyCategory
 import com.example.domain.model.KeyRecord
 import com.example.domain.model.KeyStandardSpec
@@ -16,6 +18,7 @@ import com.example.engine.BittingCalculator
 import com.example.engine.BittingDecodeResult
 import com.example.engine.KeyPhotoAnalyzer
 import com.example.engine.PerspectiveCalibrator
+import com.example.engine.PhotoCropRect
 import com.example.export.Mesh3D
 import com.example.export.StlMeshGenerator
 import kotlinx.coroutines.Dispatchers
@@ -53,9 +56,11 @@ data class StudioUiState(
     val tipStyle: KeyTipStyle = KeyTipStyle.STANDARD_TAPER,
     val tipLengthMm: Float = 2.6f,
     val tipOffsetMm: Float = 0f,
+    val bowStyle: KeyBowStyle = KeyBowStyle.CLASSIC_OVAL,
     val bowScale: Float = 1.0f,
     val frameZoom: Float = 1.0f,
     val stepPrecisionMm: Float = 0.25f,
+    val highContrastGlassMode: Boolean = false,
     val customContourMm: List<Point2D> = emptyList(),
     val useExactPhotoContour: Boolean = false,
     val showLongitudinalPad: Boolean = false,
@@ -69,6 +74,10 @@ data class StudioUiState(
     val sourceBitmap: Bitmap? = null,
     val rectifiedBitmap: Bitmap? = null,
     val photoOverlayBitmap: Bitmap? = null,
+    val photoCropRect: PhotoCropRect = PhotoCropRect.FULL,
+    val shadowSensitivity: Float = 0f,
+    val flipPhotoH: Boolean = false,
+    val flipPhotoV: Boolean = false,
     val photoConfidencePercent: Int = 0,
     val isAnalyzingPhoto: Boolean = false,
     val cardCorners: List<Point2D> = defaultCorners(),
@@ -96,6 +105,7 @@ data class StudioUiState(
         tipStyle = tipStyle,
         tipLengthMm = tipLengthMm,
         tipOffsetMm = tipOffsetMm,
+        bowStyle = bowStyle,
         bowScale = bowScale,
         customContourMm = customContourMm,
         useExactPhotoContour = useExactPhotoContour,
@@ -154,10 +164,49 @@ class StudioViewModel(
             tipStyle = record.tipStyle,
             tipLengthMm = record.tipLengthMm,
             tipOffsetMm = record.tipOffsetMm,
+            bowStyle = record.bowStyle,
             bowScale = record.bowScale,
             customContourMm = record.customContourMm,
             useExactPhotoContour = record.useExactPhotoContour,
             bittingResult = result
+        )
+        rebuildMesh()
+    }
+
+    fun applyCatalogPreset(
+        preset: KeyCatalogPreset,
+        isArabic: Boolean,
+        openLongitudinalPad: Boolean = true
+    ) {
+        val spec = KeyStandards.getById(preset.standardId)
+        val decoded = BittingCalculator.decode(spec, preset.depthsMm, preset.spacingsMm, preset.bladeWidthMm)
+        _state.value = StudioUiState(
+            editingId = _state.value.editingId,
+            mode = StudioMode.SCREEN_RULER,
+            keyName = if (isArabic) preset.nameAr else preset.nameEn,
+            category = preset.keyCategory,
+            tags = preset.codeTag,
+            standard = spec,
+            pinCount = preset.pinCount,
+            bladeLengthMm = preset.bladeLengthMm,
+            bladeWidthMm = preset.bladeWidthMm,
+            bladeThicknessMm = preset.bladeThicknessMm,
+            spacingsMm = preset.spacingsMm,
+            depthsMm = preset.depthsMm,
+            flatWidthsMm = preset.flatWidthsMm,
+            leftSlopesDeg = preset.leftSlopesDeg,
+            rightSlopesDeg = preset.rightSlopesDeg,
+            isDoubleSided = preset.isDoubleSided,
+            tipStyle = preset.tipStyle,
+            tipLengthMm = preset.tipLengthMm,
+            tipOffsetMm = preset.tipOffsetMm,
+            bowStyle = preset.bowStyle,
+            bowScale = preset.bowScale,
+            customContourMm = emptyList(),
+            useExactPhotoContour = false,
+            showLongitudinalPad = openLongitudinalPad,
+            selectedPinIndex = 0,
+            bittingResult = decoded
         )
         rebuildMesh()
     }
@@ -256,6 +305,17 @@ class StudioViewModel(
         )
     }
 
+    fun updateBowStyle(style: KeyBowStyle) {
+        updateGeometry(
+            bowStyle = style,
+            useExactPhotoContour = false
+        )
+    }
+
+    fun toggleHighContrastGlassMode() {
+        _state.value = _state.value.copy(highContrastGlassMode = !_state.value.highContrastGlassMode)
+    }
+
     fun setDoubleSided(doubleSided: Boolean) {
         val cur = _state.value
         val maxDepth = maxAllowedCutDepth(cur.bladeWidthMm, doubleSided)
@@ -312,8 +372,20 @@ class StudioViewModel(
         val cur = _state.value
         if (index !in 0 until cur.pinCount) return
         val newDepth = depthForQuickLevel(level.coerceIn(0, 9))
+        val deltaDepth = newDepth - cur.depthsMm[index]
         val updated = cur.depthsMm.toMutableList().apply { this[index] = newDepth }
-        updateGeometry(depthsMm = updated, useExactPhotoContour = false, selectedPinIndex = index)
+        val morphed = morphPhotoContourForPin(
+            cur = cur,
+            pinX = cur.spacingsMm[index],
+            dxMm = 0f,
+            dyDepthMm = deltaDepth
+        )
+        updateGeometry(
+            depthsMm = updated,
+            customContourMm = morphed,
+            useExactPhotoContour = cur.useExactPhotoContour && morphed.size >= 12,
+            selectedPinIndex = index
+        )
     }
 
     fun stepPinLevel(index: Int, delta: Int) {
@@ -330,14 +402,53 @@ class StudioViewModel(
         setPinLevelCode(index, targetLevel)
     }
 
+    fun copyPreviousPinDepth(index: Int) {
+        val cur = _state.value
+        if (index !in 1 until cur.pinCount) return
+        val prevDepth = cur.depthsMm[index - 1]
+        val deltaDepth = prevDepth - cur.depthsMm[index]
+        val updatedDepths = cur.depthsMm.toMutableList().apply { this[index] = prevDepth }
+        val morphed = morphPhotoContourForPin(
+            cur = cur,
+            pinX = cur.spacingsMm[index],
+            dxMm = 0f,
+            dyDepthMm = deltaDepth
+        )
+        updateGeometry(
+            depthsMm = updatedDepths,
+            customContourMm = morphed,
+            useExactPhotoContour = cur.useExactPhotoContour && morphed.size >= 12,
+            selectedPinIndex = index
+        )
+    }
+
+    fun nudgeAllPinsX(dxMm: Float) {
+        val cur = _state.value
+        if (cur.spacingsMm.isEmpty() || dxMm == 0f) return
+        val first = cur.spacingsMm.first()
+        val last = cur.spacingsMm.last()
+        val allowedMinShift = 2.0f - first
+        val allowedMaxShift = (cur.bladeLengthMm - 1.8f) - last
+        val shift = dxMm.coerceIn(allowedMinShift, maxOf(allowedMinShift, allowedMaxShift))
+        if (kotlin.math.abs(shift) < 0.01f) return
+        val shifted = cur.spacingsMm.map { BittingCalculator.roundToPrecision(it + shift, 0.05f) }
+        updateGeometry(
+            spacingsMm = shifted,
+            useExactPhotoContour = false
+        )
+    }
+
     /**
      * Arrow-only motion of the selected tooth point in X (spacing) and Y (cut depth).
+     * Also smoothly morphs extracted photo contour vertices locally when exact photo contour is active.
      */
     fun movePinByArrow(index: Int, dxMm: Float, dyDepthMm: Float) {
         val cur = _state.value
         if (index !in 0 until cur.pinCount) return
         var newSpacings = cur.spacingsMm
         var newDepths = cur.depthsMm
+        var actualDx = 0f
+        var actualDy = 0f
 
         if (dxMm != 0f) {
             val minS = if (index == 0) 2.2f else cur.spacingsMm[index - 1] + 1.6f
@@ -346,6 +457,7 @@ class StudioViewModel(
                 (cur.spacingsMm[index] + dxMm).coerceIn(minS, maxOf(minS, maxS)),
                 0.05f
             )
+            actualDx = clampedS - cur.spacingsMm[index]
             newSpacings = cur.spacingsMm.toMutableList().apply { this[index] = clampedS }
         }
         if (dyDepthMm != 0f) {
@@ -354,13 +466,21 @@ class StudioViewModel(
                 (cur.depthsMm[index] + dyDepthMm).coerceIn(0f, maxAllowed),
                 0.05f
             )
+            actualDy = clampedD - cur.depthsMm[index]
             newDepths = cur.depthsMm.toMutableList().apply { this[index] = clampedD }
         }
 
+        val morphed = morphPhotoContourForPin(
+            cur = cur,
+            pinX = cur.spacingsMm[index],
+            dxMm = actualDx,
+            dyDepthMm = actualDy
+        )
         updateGeometry(
             spacingsMm = newSpacings,
             depthsMm = newDepths,
-            useExactPhotoContour = false,
+            customContourMm = morphed,
+            useExactPhotoContour = cur.useExactPhotoContour && morphed.size >= 12,
             selectedPinIndex = index
         )
     }
@@ -501,10 +621,37 @@ class StudioViewModel(
             sourceBitmap = bitmap,
             rectifiedBitmap = null,
             photoOverlayBitmap = null,
+            photoCropRect = PhotoCropRect.FULL,
+            shadowSensitivity = 0f,
+            flipPhotoH = false,
+            flipPhotoV = false,
             cardCorners = StudioUiState.defaultCorners(),
             showCameraPreview = false
         )
         analyzePhotoToKeyAnd3D(bitmap, pxPerMmHint = null)
+    }
+
+    fun updatePhotoCropRect(rect: PhotoCropRect) {
+        _state.value = _state.value.copy(photoCropRect = rect)
+    }
+
+    fun resetPhotoCropRect() {
+        _state.value = _state.value.copy(photoCropRect = PhotoCropRect.FULL)
+        analyzePhotoToKeyAnd3D()
+    }
+
+    fun setShadowSensitivity(value: Float) {
+        _state.value = _state.value.copy(shadowSensitivity = value.coerceIn(-0.5f, 0.5f))
+    }
+
+    fun toggleFlipPhotoH() {
+        _state.value = _state.value.copy(flipPhotoH = !_state.value.flipPhotoH)
+        analyzePhotoToKeyAnd3D()
+    }
+
+    fun toggleFlipPhotoV() {
+        _state.value = _state.value.copy(flipPhotoV = !_state.value.flipPhotoV)
+        analyzePhotoToKeyAnd3D()
     }
 
     fun updateCorner(index: Int, normalizedPoint: Point2D) {
@@ -541,25 +688,41 @@ class StudioViewModel(
     }
 
     fun analyzePhotoToKeyAnd3D(bitmap: Bitmap? = null, pxPerMmHint: Float? = null) {
-        val target = bitmap ?: _state.value.rectifiedBitmap ?: _state.value.sourceBitmap ?: return
-        val hint = pxPerMmHint ?: if (_state.value.rectifiedBitmap != null) 16f else null
-        val spec = _state.value.standard
-        _state.value = _state.value.copy(isAnalyzingPhoto = true)
+        val cur = _state.value
+        val target = bitmap ?: cur.rectifiedBitmap ?: cur.sourceBitmap ?: return
+        val hint = pxPerMmHint ?: if (cur.rectifiedBitmap != null) 16f else null
+        val crop = if (cur.rectifiedBitmap != null && bitmap == null) PhotoCropRect.FULL else cur.photoCropRect
+        val spec = cur.standard
+        val sens = cur.shadowSensitivity
+        val flipH = cur.flipPhotoH
+        val flipV = cur.flipPhotoV
+        _state.value = cur.copy(isAnalyzingPhoto = true)
         viewModelScope.launch {
             val extraction = withContext(Dispatchers.Default) {
-                KeyPhotoAnalyzer.analyzeKeyPhoto(target, spec, hint)
+                KeyPhotoAnalyzer.analyzeKeyPhoto(
+                    source = target,
+                    standard = spec,
+                    pxPerMmHint = hint,
+                    cropRect = crop,
+                    shadowSensitivity = sens,
+                    flipHorizontal = flipH,
+                    flipVertical = flipV
+                )
             }
             if (extraction.detected) {
+                val matchedSpec = KeyStandards.getById(extraction.matchedStandardId)
                 val decoded = BittingCalculator.decode(
-                    spec,
+                    matchedSpec,
                     extraction.depthsMm,
                     extraction.spacingsMm,
                     extraction.bladeWidthMm
                 )
                 _state.value = _state.value.copy(
+                    standard = matchedSpec,
                     pinCount = extraction.pinCount,
                     bladeLengthMm = extraction.bladeLengthMm,
                     bladeWidthMm = extraction.bladeWidthMm,
+                    bowStyle = extraction.bowStyle,
                     bowScale = extraction.bowScale,
                     isDoubleSided = extraction.isDoubleSided,
                     spacingsMm = extraction.spacingsMm,
@@ -614,6 +777,33 @@ class StudioViewModel(
     private fun normalizeList(list: List<Float>, targetSize: Int, defaultVal: Float): List<Float> =
         List(targetSize) { idx -> list.getOrElse(idx) { defaultVal } }
 
+    private fun morphPhotoContourForPin(
+        cur: StudioUiState,
+        pinX: Float,
+        dxMm: Float,
+        dyDepthMm: Float
+    ): List<Point2D> {
+        if (!cur.useExactPhotoContour || cur.customContourMm.size < 12) return cur.customContourMm
+        if (dxMm == 0f && dyDepthMm == 0f) return cur.customContourMm
+        val halfSpan = 2.15f
+        val halfBladeY = cur.bladeWidthMm * 0.5f
+        return cur.customContourMm.map { pt ->
+            val dist = kotlin.math.abs(pt.x - pinX)
+            if (dist <= halfSpan && pt.x > 0.6f && pt.x < cur.bladeLengthMm - 0.6f) {
+                val w = (1f - dist / halfSpan).coerceIn(0f, 1f)
+                val newX = pt.x + dxMm * w
+                val newY = when {
+                    pt.y >= halfBladeY -> (pt.y - dyDepthMm * w).coerceIn(1.2f, cur.bladeWidthMm)
+                    cur.isDoubleSided && pt.y < halfBladeY -> (pt.y + dyDepthMm * w).coerceIn(0f, cur.bladeWidthMm * 0.48f)
+                    else -> pt.y
+                }
+                Point2D(newX, newY)
+            } else {
+                pt
+            }
+        }
+    }
+
     private fun updateGeometry(
         standard: KeyStandardSpec = _state.value.standard,
         pinCount: Int = _state.value.pinCount,
@@ -629,7 +819,9 @@ class StudioViewModel(
         tipStyle: KeyTipStyle = _state.value.tipStyle,
         tipLengthMm: Float = _state.value.tipLengthMm,
         tipOffsetMm: Float = _state.value.tipOffsetMm,
+        bowStyle: KeyBowStyle = _state.value.bowStyle,
         bowScale: Float = _state.value.bowScale,
+        customContourMm: List<Point2D> = _state.value.customContourMm,
         useExactPhotoContour: Boolean = _state.value.useExactPhotoContour,
         selectedPinIndex: Int = _state.value.selectedPinIndex
     ) {
@@ -649,7 +841,9 @@ class StudioViewModel(
             tipStyle = tipStyle,
             tipLengthMm = tipLengthMm,
             tipOffsetMm = tipOffsetMm,
+            bowStyle = bowStyle,
             bowScale = bowScale,
+            customContourMm = customContourMm,
             useExactPhotoContour = useExactPhotoContour,
             selectedPinIndex = selectedPinIndex,
             bittingResult = decoded

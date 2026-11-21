@@ -123,6 +123,9 @@ class KeyVaultRepository(
         val parsedTipStyle = runCatching {
             com.example.domain.model.KeyTipStyle.valueOf(tipStyle)
         }.getOrDefault(com.example.domain.model.KeyTipStyle.STANDARD_TAPER)
+        val parsedBowStyle = runCatching {
+            com.example.domain.model.KeyBowStyle.valueOf(bowStyle)
+        }.getOrDefault(com.example.domain.model.KeyBowStyle.CLASSIC_OVAL)
         val cat = runCatching { KeyCategory.valueOf(category) }.getOrDefault(KeyCategory.OTHER)
         return KeyRecord(
             id = id,
@@ -143,6 +146,7 @@ class KeyVaultRepository(
             tipStyle = parsedTipStyle,
             tipLengthMm = tipLengthMm,
             tipOffsetMm = tipOffsetMm,
+            bowStyle = parsedBowStyle,
             bowScale = bowScale,
             customContourMm = customContour,
             useExactPhotoContour = useExactPhotoContour,
@@ -173,6 +177,7 @@ class KeyVaultRepository(
         tipStyle = tipStyle.name,
         tipLengthMm = tipLengthMm,
         tipOffsetMm = tipOffsetMm,
+        bowStyle = bowStyle.name,
         bowScale = bowScale,
         customContourJson = json.encodeToString(customContourMm),
         useExactPhotoContour = useExactPhotoContour,
